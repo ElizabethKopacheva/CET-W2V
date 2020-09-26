@@ -18,7 +18,7 @@ Due to ethical concerns, we are not allowed to provide the full dataset of the c
 
 The code follows the parts of the analysis in the logical order.
 ## Dynamic community detection
-The first step in the analysis was to distinguish dynamic communities of users. To do so, we have used a two-fold approach. First, the static networks of each time period (month) were divided into clusters applying multi-level modularity optimization algorithm within the package igraph [-@igraph]. After the static clusters were detected, community evolution tracking algorithm was applied to distinguished dynamic communities.
+The first step in the analysis was to distinguish dynamic communities of users. To do so, we have used a two-fold approach. First, the static networks of each time period (month) were divided into clusters applying multi-level modularity optimization algorithm within the package igraph. After the static clusters were detected, community evolution tracking algorithm was applied to distinguished dynamic communities.
 ### Static community detection
 
 
@@ -165,7 +165,9 @@ mod$date<-as.Date(mod$date,format="%Y-%m-%d")
 #install.packages("clplot")
 my_colors = c("#FFF5EB","#FEE6CE","#FDD0A2","#FDAE6B","#FD8D3C",
               "#F16913","#D94801","#A63603","#7F2704")
-clplot(x=decimal_date(mod$date), y=mod$mod_active, lwd=3, levels=c(0.33,0.36,0.39,0.42,0.45,0.48,0.51,0.54), col=my_colors, 
+clplot(x=decimal_date(mod$date), y=mod$mod_active, lwd=3, 
+              levels=c(0.33,0.36,0.39,
+              0.42,0.45,0.48,0.51,0.54), col=my_colors, 
        showcuts=T , bty="n",xlab="",ylab = "modularity")
 ```
 
@@ -977,8 +979,10 @@ library(plotmath)
 op <- par(mar=c(5, 6, 4, 2) + 0.1)
 
 # Building a graph
-clplot(x=decimal_date(vis2$month), y=vis2$mean, lwd=3, levels=c(0.17,0.20,0.23,0.26,0.29,0.32,0.35), col=my_colors, 
-       showcuts=T , bty="n",xlab="",ylab=expression(y[1]))
+clplot(x=decimal_date(vis2$month), y=vis2$mean, lwd=3, 
+     levels=c(0.17,0.20,0.23,0.26,0.29,0.32,0.35), 
+     col=my_colors, 
+     showcuts=T , bty="n",xlab="",ylab=expression(y[1]))
 ```
 
 <div class="figure">
@@ -1049,7 +1053,8 @@ clust_size<-unique(data[,c("user_id","dyn_cluster")]) %>%
 
 # Keeping only those clusters that formed from the beginning to the 
 # end of the examined time period
-big_clust<-data[which(data$dyn_cluster %in% clust_size$dyn_cluster),c("user_id","created_at","dyn_cluster")]%>%
+big_clust<-data[which(data$dyn_cluster %in% clust_size$dyn_cluster),
+         c("user_id","created_at","dyn_cluster")]%>%
   group_by(dyn_cluster)%>%
   dplyr::summarise(begin=min(floor_date(created_at, "month")), 
                    # when the cluster started its life cycle
@@ -1147,7 +1152,9 @@ edges$same_clust<-ifelse(edges$mean==edges$mean2,1,0)
 edges$diff_clust<-ifelse(edges$mean!=edges$mean2,1,0)
 
 # Calculating the number of edges in both groups
-edges<-edges %>% group_by(month) %>% dplyr::summarise(sum_sim=sum(same_clust),sum_diff=sum(diff_clust))
+edges<-edges %>% group_by(month) %>% 
+     dplyr::summarise(sum_sim=sum(same_clust),
+     sum_diff=sum(diff_clust))
 # Dividing the number of same_clust edges by the number of diff_clust 
 # edges
 edges$prop<-edges$sum_sim/edges$sum_diff
@@ -1156,7 +1163,8 @@ edges$prop<-edges$sum_sim/edges$sum_diff
 my_colors = c("#E0ECF4","#BFD3E6","#9EBCDA","#8C96C6",
               "#8C6BB1","#88419D","#810F7C","#4D004B")
 clplot(x=decimal_date(edges$month), y=edges$prop, lwd=3, 
-       levels=c(5,10,15,20,25,30,35), col=my_colors, showcuts=T , bty="n",xlab="",ylab=expression(y[2]))
+       levels=c(5,10,15,20,25,30,35), col=my_colors, 
+       showcuts=T , bty="n",xlab="",ylab=expression(y[2]))
 ```
 <div class="figure">
 <img src="Fig7.png" alt="Fig. 7. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views." width="100%" />
@@ -1326,7 +1334,9 @@ edges$diff_clust<-ifelse((edges$mean==-1&edges$mean2!=-1)|
                            (edges$mean!=-1&edges$mean2==-1),1,0)
 
 # Calculating the number of edges in both groups
-edges<-edges %>% group_by(month) %>% dplyr::summarise(sum_sim=sum(same_clust),sum_diff=sum(diff_clust))
+edges<-edges %>% group_by(month) %>% 
+    dplyr::summarise(sum_sim=sum(same_clust),
+    sum_diff=sum(diff_clust))
 # Dividing the number of same_clust edges by the number of 
 # diff_clust edges
 edges$prop<-edges$sum_sim/edges$sum_diff
@@ -1335,7 +1345,8 @@ edges$prop<-edges$sum_sim/edges$sum_diff
 my_colors = c("#E0ECF4","#BFD3E6","#9EBCDA","#8C96C6","#8C6BB1",
               "#88419D","#810F7C","#4D004B")
 clplot(x=decimal_date(edges$month), y=edges$prop, lwd=3, 
-       levels=c(5,10,15,20,25,30,35), col=my_colors, showcuts=T , bty="n",xlab="",ylab=expression(y[3]))
+       levels=c(5,10,15,20,25,30,35), col=my_colors, showcuts=T , 
+       bty="n",xlab="",ylab=expression(y[3]))
 ```
 
 
@@ -1345,4 +1356,4 @@ The following graph shows that users expressing negative views prefer to stay in
 <p class="caption">Fig. 9. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views.</p>
 </div>
 
-# References
+
