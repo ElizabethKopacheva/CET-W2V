@@ -158,7 +158,10 @@ clplot(x=decimal_date(mod$date), y=mod$mod_active, lwd=3, levels=c(0.33,0.36,0.3
 
 The modularity values change over time as follows:
 
-![Fig. 1. Modularity changes over time](Fig1.png)
+<div class="figure">
+<img src="Fig1.png" alt="Fig. 1. Modularity changes over time" width="100%" />
+<p class="caption">Fig. 1. Modularity changes over time</p>
+</div>
 
 
 
@@ -759,7 +762,10 @@ fightin_words_plot(top_features,
 ```
 
 The following graph shows the terms most likely to be associated with positive and negative tweets
-![Fig. 2. Terms most likely associated with negative and positive tweets](Fig2.png)
+<div class="figure">
+<img src="Fig2.png" alt="Fig. 2. Terms most likely associated with negative and positive tweets" width="60%" />
+<p class="caption">Fig. 2. Terms most likely associated with negative and positive tweets</p>
+</div>
 
 
 ## Analysing the results
@@ -814,7 +820,10 @@ vis1%>%
   sg_fill_brewer("Oranges")
 ```
 
-![Fig. 3. Growth of the users’ clusters in time](Fig3.png)
+<div class="figure">
+<img src="Fig3.png" alt="Fig. 3. Growth of the users’ clusters in time" width="60%" />
+<p class="caption">Fig. 3. Growth of the users’ clusters in time</p>
+</div>
 
 
 ### Proportion  difference  between  the  number  of  negative  and  positive tweets
@@ -852,7 +861,10 @@ op <- par(mar=c(5, 6, 4, 2) + 0.1)
 clplot(x=decimal_date(vis2$month), y=vis2$mean, lwd=3, levels=c(0.17,0.20,0.23,0.26,0.29,0.32,0.35), col=my_colors, showcuts=T , bty="n",xlab="",ylab=expression(y[1]))
 ```
 
-![Fig. 4. Proportion  difference  between  the  number  of  negative  and  positivetweets.](Fig4.png)
+<div class="figure">
+<img src="Fig4.png" alt="Fig. 4. Proportion  difference  between  the  number  of  negative  and  positivetweets." width="100%" />
+<p class="caption">Fig. 4. Proportion  difference  between  the  number  of  negative  and  positivetweets.</p>
+</div>
 
 ### Overall sentiment value difference over time
 
@@ -875,7 +887,10 @@ vis3<-vis3 %>% group_by(month) %>% dplyr::summarise(sd=sd(sent_scaled,na.rm = T)
 library(ggplot2)
 ggplot()+geom_smooth(vis3,mapping=aes(month,sd),na.rm=T,color="#440154FF",fill=alpha("#440154FF",0.1),size=1)+theme(panel.background = element_rect(fill = NA),legend.position = "none")+ylab("SD of the sentiment values")+xlab("")
 ```
-![Fig. 5. Overall sentiment value difference over time.](Fig5.png)
+<div class="figure">
+<img src="Fig5.png" alt="Fig. 5. Overall sentiment value difference over time." width="100%" />
+<p class="caption">Fig. 5. Overall sentiment value difference over time.</p>
+</div>
 
 
 ### Sentiment value difference for the biggest dynamic clusters over time
@@ -922,7 +937,10 @@ library("viridis")
 # Visualizing 
 ggplot()+geom_smooth(vis4,mapping=aes(month,sd,color=dyn_cluster,fill=dyn_cluster),na.rm=T)+theme(panel.background = element_rect(fill = NA),legend.position = "none")+scale_color_viridis(discrete = T, option = "D")+scale_fill_viridis(discrete = T, option = "D")+ylab("SD of the sentiment values")+xlab("")
 ```
-![Fig. 6. Sentiment value difference for the biggest dynamic clusters over time.](Fig6.png)
+<div class="figure">
+<img src="Fig6.png" alt="Fig. 6. Sentiment value difference for the biggest dynamic clusters over time." width="100%" />
+<p class="caption">Fig. 6. Sentiment value difference for the biggest dynamic clusters over time.</p>
+</div>
 
 ### The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views
 
@@ -990,7 +1008,10 @@ edges$prop<-edges$sum_sim/edges$sum_diff
 my_colors = c("#E0ECF4","#BFD3E6","#9EBCDA","#8C96C6","#8C6BB1","#88419D","#810F7C","#4D004B")
 clplot(x=decimal_date(edges$month), y=edges$prop, lwd=3, levels=c(5,10,15,20,25,30,35), col=my_colors, showcuts=T , bty="n",xlab="",ylab=expression(y[2]))
 ```
-![Fig. 7. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views.](Fig7.png)
+<div class="figure">
+<img src="Fig7.png" alt="Fig. 7. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views." width="100%" />
+<p class="caption">Fig. 7. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views.</p>
+</div>
 
 ### Number of users who had a positive opinion on the matter of migration and later changed it to the negative opinion
 
@@ -1073,7 +1094,10 @@ ggplot(vis5,mapping=aes(x=month_diff,y=count,color=count,fill=count))+geom_bar(s
 
 Only 48 users changed their opinion from positive to negative when getting involved into discussions with other users.
 The following graph shows for how many months each of those users was involved into the discussions.
-![Fig. 8. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions](Fig8.png)
+<div class="figure">
+<img src="Fig8.png" alt="Fig. 8. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions" width="100%" />
+<p class="caption">Fig. 8. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions</p>
+</div>
 
 ### The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between the  users  expressing  negative  and neutral or positive views
 
@@ -1144,6 +1168,9 @@ clplot(x=decimal_date(edges$month), y=edges$prop, lwd=3, levels=c(5,10,15,20,25,
 
 
 The following graph shows that users expressing negative views prefer to stay in contact with the users of the same views.
-![Fig. 9. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views.](Fig9.png)
+<div class="figure">
+<img src="Fig9.png" alt="Fig. 9. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views." width="100%" />
+<p class="caption">Fig. 9. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views.</p>
+</div>
 
 # References
