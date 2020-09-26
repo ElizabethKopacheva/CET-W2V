@@ -18,7 +18,7 @@ Due to ethical concerns, we are not allowed to provide the full dataset of the c
 
 The code follows the parts of the analysis in the logical order.
 ## Dynamic community detection
-The first step in the analysis was to distinguish dynamic communities of users. To do so, we have used a two-fold approach. First, the static networks of each time period (month) were divided into clusters applying multi-level modularity optimization algorithm within the package igraph [@igraph]. After the static clusters were detected, community evolution tracking algorithm was applied to distinguished dynamic communities.
+The first step in the analysis was to distinguish dynamic communities of users. To do so, we have used a two-fold approach. First, the static networks of each time period (month) were divided into clusters applying multi-level modularity optimization algorithm within the package igraph [-@igraph]. After the static clusters were detected, community evolution tracking algorithm was applied to distinguished dynamic communities.
 ### Static community detection
 
 
