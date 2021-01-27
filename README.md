@@ -1,1 +1,1 @@
-# Supplementary information for Using community evolution tracking and word2vector techniques to analyse polarization in dynamic discussion networks
+# Supplementary R script for Community evolution and sentiment polarisation in dynamic discussion networks
