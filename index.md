@@ -1358,13 +1358,13 @@ The following graph shows that users expressing negative views prefer to stay in
 
 ### Robustness test
 
-As a robustness test, we applied multiple change point analysis to distinguish specific dates that associated with sentiment value shifts in the time series.  
+As a robustness test, we applied multiple change point analysis to distinguish specific dates associated with sentiment value shifts in the time series.  
 
 ```r
 # Conducting multiple change point analysis
 
 # Loading the package
-#install.packages("ecp",dependencies=T)
+# install.packages("ecp",dependencies=T)
 library(ecp)
 
 # Subsetting the needed variables
