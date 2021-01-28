@@ -1365,7 +1365,7 @@ As a robustness test, we applied multiple change point analysis to distinguish s
 
 # Loading the package
 #install.packages("ecp",dependencies=T)
-library (ecp)
+library(ecp)
 
 # Subsetting the needed variables
 vis6<-data[,c("created_at","pos_neg","sent_scaled")]
