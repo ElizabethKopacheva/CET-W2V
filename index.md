@@ -1356,4 +1356,89 @@ The following graph shows that users expressing negative views prefer to stay in
 <p class="caption">Fig. 9. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views.</p>
 </div>
 
+### Robustness test
 
+As a robustness test, we applied multiple change point analysis to distinguish specific dates that associated with sentiment value shifts in the time series.  
+
+```r
+# Conducting multiple change point analysis
+
+# Subsetting the needed variables
+vis6<-data[,c("created_at","pos_neg","sent_scaled")]
+
+# Creating a new month variable 
+vis6$month<-floor_date(vis6$created_at, "month")
+
+# Changing the values of sentiments
+vis6$neg<-ifelse(vis6$pos_neg==2,0,vis6$pos_neg)
+vis6$pos<-ifelse(vis6$pos_neg==1,0,vis6$pos_neg)
+vis6$pos<-ifelse(vis6$pos==2,1,vis6$pos)
+
+# Summarizing by month
+vis6<-vis6 %>% 
+  select (month, sent_scaled,neg, pos)%>% 
+  group_by(month) %>% 
+  dplyr::summarise(sd=sd(sent_scaled,na.rm = T),
+                   neg=mean(neg,na.rm = T),
+                   pos=mean(pos,na.rm = T))
+
+# Adding a column modularity
+vis6$mod<-mod_active
+
+# We want to scale all the values for vizualisation purposes
+range_fun <- function(x){(x-min(x))/(max(x)-min(x))}
+for (i in 2:length(names(vis6))){
+  vis6[,i]<-range_fun(vis6[,i])
+}
+
+# Applying multiple change point analysis
+vis_ecp <- e.divisive (as.matrix(vis6[,-1]), min.size = 2) 
+
+# Now we can visualize the results 
+# creating 4 new objects storing the dates of the change points
+dat1<-vis6$month[which(vis_ecp$cluster=="2")[[1]]]
+dat2<-vis6$month[which(vis_ecp$cluster=="3")[[1]]]
+dat3<-vis6$month[which(vis_ecp$cluster=="4")[[1]]]
+dat4<-vis6$month[which(vis_ecp$cluster=="5")[[1]]]
+
+# Renaming the variables
+names(vis6)[2:length(names(vis6))]<-c("SD of the sentiment values",
+                                    "% of negative tweets",
+                                    "% of positive tweets",
+                                    "modularity")
+# Reshaping the data
+mdata <- melt(vis6, id=c("month"))
+
+# Visualizing 
+ggplot(mdata,aes(x=month,y=value,col=variable,fill=variable))+
+  geom_smooth(alpha=0.7)+ # adding the lines showing the values
+  scale_color_viridis(discrete = T, option = "D")+ 
+  # changing the colors
+  scale_fill_viridis(discrete = T, option = "D")+
+  theme(panel.background = element_rect(fill = NA),legend.position="top",
+        legend.title=element_blank(),
+        text = element_text(size=20))+
+  ylab("Value")+xlab("")+
+  # adding vertical lines for the identified time periods
+  geom_vline(aes(xintercept = dat1),col="#440154FF",linetype="dotted")+
+  geom_vline(aes(xintercept = dat2),col="#440154FF",linetype="dotted")+
+  geom_vline(aes(xintercept = dat3),col="#440154FF",linetype="dotted")+
+  geom_vline(aes(xintercept = dat4),col="#440154FF",linetype="dotted")+
+  geom_text(aes(x=dat1,y=0.15),size=7,
+            family="serif",fontface="plain",
+            label=format(dat1,"%b %Y"),col="#404788FF",hjust =-0.05)+
+  geom_text(aes(x=dat2,y=0.19),size=7,
+            family="serif",fontface="plain",color="#404788FF",
+            label=format(dat2,"%b %Y"),hjust =-0.05)+
+  geom_text(aes(x=dat3,y=0.28),size=7,
+            family="serif",fontface="plain",color="#404788FF",
+            label=format(dat3,"%b %Y"),hjust =-0.05)+
+  geom_text(aes(x=dat4,y=0.58),size=7,
+            family="serif",fontface="plain",color="#404788FF",
+            label=format(dat4,"%b %Y"),hjust =-0.05)
+```
+
+<div class="figure">
+<img src="Fig10.png" alt="Fig. 10. Change-points of the sentiment values and networks' modularities found in respect to the time-periods." width="100%" />
+<p class="caption">Fig. 10. Change-points of the sentiment values and networks' modularities found in respect to the time periods.</p>
+</div>
