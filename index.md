@@ -1,6 +1,5 @@
 ---
-title: Supplementary information for Using community evolution tracking and word2vector
-  techniques to analyse polarization in dynamic discussion networks
+title: Supplementary information for Users’ polarisation in dynamic discussion networks: the case of immigration crisis in Sweden
 output:
   html_document:
     keep_md: true
@@ -8,7 +7,7 @@ bibliography: My_bib.bib
 ---
 
 # Supplementary information for 
-# Using community evolution tracking and word2vector techniques to analyse polarisation in dynamic discussion networks
+# Users’ polarisation in dynamic discussion networks: the case of immigration crisis in Sweden
 
 
 
