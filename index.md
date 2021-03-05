@@ -1,5 +1,5 @@
 ---
-title: Supplementary information for Users’ polarisation in dynamic discussion networks: the case of immigration crisis in Sweden
+title: Supplementary information for Users' polarisation in dynamic discussion networks: the case of refugee crisis in Sweden
 output:
   html_document:
     keep_md: true
@@ -7,7 +7,7 @@ bibliography: My_bib.bib
 ---
 
 # Supplementary information for 
-# Users’ polarisation in dynamic discussion networks: the case of immigration crisis in Sweden
+# Users' polarisation in dynamic discussion networks: the case of refugee crisis in Sweden
 
 
 
