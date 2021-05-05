@@ -59,6 +59,7 @@ names(time) <- sort(unique(nodes_active$month)) # Months themselves
 
 ```r
 # The following block of code creates edge lists for each time period
+# In R
 # Subsetting the dataframe
 active_edgelists<-data[,c("user_id","reply_to_user_id","mentions_user_id","created_at","month")]
 
@@ -101,6 +102,7 @@ After the edgelist was created, communities were found using the following algor
 
 ```py
 # Loading the edgelist
+# In Python
 import pandas as pd
 edges=pd.read_csv("edges.csv", index_col=None)
 
@@ -181,7 +183,16 @@ for i in p.keys():
 # Saving the df for the latter use
 df_com.to_csv('dyn_com.csv',index=False)
 ```
+```r
+# Adding the results into the df 
+# In R
+memb_df<-read.csv("dyn_com.csv")
+names(memb_df)<-c("user_id","dyn_cluster") # renaming the columns
 
+# Merge the results with the main dataframe
+data<-left_join(data,memb_df)
+# Now, we have a new column dyn_cluster
+```
 ## Sentiment analysis
 
 After acquiring the information about the placement of users in the dynamic clusters, we have conducted sentiment analysis. To do so, we did the following.
@@ -1094,9 +1105,6 @@ vis6<-vis6 %>%
                    neg=mean(neg,na.rm = T),
                    pos=mean(pos,na.rm = T))
 
-# Adding a column modularity
-vis6$mod<-mod_active
-
 # We want to scale all the values for vizualisation purposes
 range_fun <- function(x){(x-min(x))/(max(x)-min(x))}
 for (i in 2:length(names(vis6))){
@@ -1116,8 +1124,7 @@ dat4<-vis6$month[which(vis_ecp$cluster=="5")[[1]]]
 # Renaming the variables
 names(vis6)[2:length(names(vis6))]<-c("SD of the sentiment values",
                                     "% of negative tweets",
-                                    "% of positive tweets",
-                                    "modularity")
+                                    "% of positive tweets")
 # Reshaping the data
 mdata <- melt(vis6, id=c("month"))
 
@@ -1151,6 +1158,6 @@ ggplot(mdata,aes(x=month,y=value,col=variable,fill=variable))+
 ```
 
 <div class="figure">
-<img src="Fig10.png" alt="Fig. 10. Change-points of the sentiment values and networks' modularities found in respect to the time-periods." width="100%" />
-<p class="caption">Fig. 10. Change-points of the sentiment values and networks' modularities found in respect to the time periods.</p>
+<img src="Fig10.png" alt="Fig. 10. Change-points of the sentiment values found in respect to the time-periods." width="100%" />
+<p class="caption">Fig. 10. Change-points of the sentiment values found in respect to the time periods.</p>
 </div>
