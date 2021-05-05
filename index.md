@@ -17,460 +17,169 @@ Due to ethical concerns, we are not allowed to provide the full dataset of the c
 
 The code follows the parts of the analysis in the logical order.
 ## Dynamic community detection
-The first step in the analysis was to distinguish dynamic communities of users. To do so, we have used a two-fold approach. First, the static networks of each time period (month) were divided into clusters applying multi-level modularity optimization algorithm within the package igraph. After the static clusters were detected, community evolution tracking algorithm was applied to distinguished dynamic communities.
-### Static community detection
+The first step in the analysis was to distinguish dynamic communities of users. Firstly, we have subsetted the network to keep only active users (i.e., those who posted more than 5 tweets in a month) and created the edgelist, where nodes were the users and edges were the replies and mentions. 
 
 
 ```r
-# The following block of code finds those users posted more than 5 
-# Twitter messages in a month and creates a new object 
-# nodes_active_unique, which is a list, each object in which is a  
-# list of active users in a given month
+# The following block of code finds those users, who posted more than 5 
+# Twitter messages in a month, and creates a new object 
+# nodes_active specifying active users in a given month
 
 # Loading the dataset
 load("twitter_df.RData")
 
-# Loading the neaded packages for data transformations
+# Creating a new vriable "month"
+twitter_df$month <- format.Date(as.Date(twitter_df$created_at),"%Y-%m")
+
+
+# Loading the needed packages for data transformations
 #install.packages(c("tidyr","dplyr"),dependencies = T)
 library(tidyr)
 library(dplyr)
 
-# Creating a new variable that identifies the month when the tweet was 
-# posted
-data$month <- format.Date(as.Date(data$created_at),"%Y-%m")
-
 # Identifying users who posted more than 5 messages in a given month
-nodes_active <- data %>%
+nodes_active <- twitter_df %>%
   select (user_id, text, month)%>% # Selecting only the needed columns
   group_by (user_id)%>% # Group_by the user
   group_by (month, .add = T)%>% # Group_by the month when the tweet 
-                                # was posted
+  # was posted
   summarise (n= n())%>% # Counting the number of tweets
   filter (n >5)%>% # Keeping only those that are more than 5
-  as.data.frame() # saving as a df
+  as.data.frame() 
 
-# Subsetting the df, keeping only active users
-data<-data[which(data$user_id %in% nodes_active$user_id),]
+# Subsetting the df
+data<-twitter_df[which(twitter_df$user_id %in% nodes_active$user_id),]
 
 # Creating a new object that will store the months and their numbers
 time <- 1:96 # Months' numbers
 names(time) <- sort(unique(nodes_active$month)) # Months themselves
-
-#identify unique active users in each time slot
-nodes_active_unique <- vector (mode = "list", length = 96)
-
-# Saving active users into a new object, list nodes_active_unique, 
-# where each object in a list is a list of active users
-for (i in seq_along(time)) # for all time periods, save active users
-{
-  nodes_active_unique [[i]] <- nodes_active$user_id
-  [nodes_active$month == names(time [i])]
-}  
 ```
 
 
 
 ```r
 # The following block of code creates edge lists for each time period
+# Subsetting the dataframe
+active_edgelists<-data[,c("user_id","reply_to_user_id","mentions_user_id","created_at","month")]
 
-# Creating empty edge lists
-active_edgelists <- vector (mode = "list", length = 96) # here, length
-# equals the number of the time periods
-
-# Filling the object for each time period
-for (i in seq_along(time))
-{
-  active_edgelists [[i]] <- data [(data$user_id %in% 
-                                     nodes_active_unique [[i]] ==T)&
-                                    (data$month == names(time [i])),] 
-  # selecting active nodes in a given month
-  active_edgelists [[i]]<-active_edgelists [[i]] %>% 
-    # creating an edge list with mentions and replies
-    select  (user_id, reply_to_user_id, mentions_user_id)%>%
-    unnest (mentions_user_id)%>%
-    pivot_longer (names_to = "type", values_to = "alter", cols = 2:3) 
-  %>% select  (-type)%>%
-    filter(!is.na(alter)) %>% # removing isolates
-    filter(user_id != alter) %>% # removing self-loops
-    filter(alter %in% nodes_active_unique [[i]] == T) %>%
-    distinct () %>% # removing duplicated ties
-    as.data.frame() # saving as a df
+# Adding replies to the column mentions 
+myfun<-function(x){
+  if (is.na(x$mentions_user_id)){
+    return(x$reply_to_user_id)
+  } else {
+    if (!(x$reply_to_user_id %in% x$mentions_user_id[[1]])){
+      return(append(x$mentions_user_id[[1]],x$reply_to_user_id))
+    } else {
+      return(x$mentions_user_id)
+    }
+  }
 }
+active_edgelists$mentions_user_id<-apply(active_edgelists, 1, function(x) myfun(x))
+
+# Unlisting the mentions column
+active_edgelists<-unnest(active_edgelists, mentions_user_id)
+# Dropping the replies column
+active_edgelists<-active_edgelists[,-2]
+active_edgelists<-na.omit(active_edgelists)
+
+# Keeping only those mentions that are active themselves
+active_edgelists<-active_edgelists[which(active_edgelists$mentions_user_id %in% nodes_active$user_id),]
+
+names(active_edgelists)<-c("from","to","date_time","month")
+
+# Adding the column with the month number
+active_edgelists<-active_edgelists[order(active_edgelists$date_time),]
+month_n<-as.data.frame(time)
+names(month_n)<-"t"
+month_n$month<-row.names(month_n)
+active_edgelists<-left_join(active_edgelists,month_n)
+
+# Saving the object
+write.csv(active_edgelists,"edges.csv", row.names=FALSE)
 ```
+After the edgelist was created, communities were found using the following algorithms: iterative detection and matching, label smoothing and smoothed Louvain. Use the tnetwork Python package to conduct the community detection. 
 
+```py
+# Loading the edgelist
+import pandas as pd
+edges=pd.read_csv("edges.csv", index_col=None)
 
+# Subsetting the df
+edges = pd.DataFrame(edges,columns=['from','to',"t"])
+edges=edges.drop_duplicates()
+edges=edges.reset_index()
 
-```r
-# The following block of code creates static networks for each time 
-# period
+# Creating the snapshot network
+import tnetwork as tn
+dg_sn = tn.DynGraphSN(frequency=1)
+for i in range(0,len(edges['from'])):
+    dg_sn.add_interactions_from((edges['from'][i],edges['to'][i]),(edges['t'][i],edges['t'][i]+1))
+    
+# Looking for the communities applying the Iterative matching algorithm
+com_iterative = tn.DCD.iterative_match(dg_sn)
 
-# Loading the package igraph
-#install.packages("igraph", dependencies = T)
-library(igraph)
+# Looking for the communities applying the iterative community detection using 
+# Clauset-Newman-Moore greedy modularity maximization and matching
+import networkx as nx
+custom_match_function = lambda x,y: len(x&y)/max(len(x),len(y))
+com_custom = tn.DCD.iterative_match(dg_sn,match_function=custom_match_function,CDalgo=nx.community.greedy_modularity_communities,threshold=0.3)
 
-# Creating an empty object
-temp_graphs_active <-  vector (mode = "list", length = 96)
+# Looking for the communities applying label smoothing
+com_survival = tn.DCD.label_smoothing(dg_sn)
 
-# Transforming edge lists to the networks
-for (i in 1:length(active_edgelists))
-{
-  temp_graphs_active[[i]]<- graph_from_data_frame(active_edgelists [[i]], 
-                                                  directed = T) 
-}
-
-# Creating a new object for undirected networks
-# We need undirected network to cluster them later
-temp_graphs_und_active <-  vector (mode = "list", length = 96)
-for (i in 1:length(temp_graphs_active))
-{
-  temp_graphs_und_active[[i]]<- as.undirected(temp_graphs_active [[i]]) 
-}
+# Looking for the communities applying smoothed Louvain
+com_survival = tn.DCD.label_smoothing(dg_sn)
 ```
+Dynamic partitions were evaluated based on the modularity at each step, consecutive similarity and global smoothness scores, such as the average value of partition smoothness, node smoothness and label smoothness.
 
+```py
+# Modularity at each step
+quality_iter1,sizes_iter = tn.DCD.quality_at_each_step(com_iterative,dg_sn)
+quality_survival1,sizes_survival = tn.DCD.quality_at_each_step(com_survival,dg_sn)
+quality_smoothed1,sizes_smoothed = tn.DCD.quality_at_each_step(com_smoothed,dg_sn)
+quality_customed1,sizes_customed = tn.DCD.quality_at_each_step(com_custom,dg_sn)
 
+# Consecutive similarity
+quality_customed2=tn.DCD.longitudinal_similarity(dg_sn,com_custom)
+quality_iter2 = tn.DCD.longitudinal_similarity(dg_sn,com_iterative)
+quality_survival2 = tn.DCD.longitudinal_similarity(dg_sn,com_survival)
+quality_smoothed2 = tn.DCD.longitudinal_similarity(dg_sn,com_smoothed)
 
-```r
-# The next block of code shows how to find communities in the static 
-# networks
-
-# Creating two empty objects
-temp_cl_active <- vector (mode = "list", length = 96)
-temp_memb_active <- vector (mode = "list", length = 96)
-
-# Applying multi-level modularity optimization algorithm to find 
-# communities
-for (i in 1:length(temp_graphs_und_active))
-{
-  temp_cl_active[[i]]<- cluster_louvain(temp_graphs_und_active [[i]]) 
-  temp_memb_active[[i]]<-membership(temp_cl_active [[i]])
-}
-
-# Checking modularity values
-mod_active <- vector ()
-for (i in 1:length(temp_cl_active))
-{
-  mod_active [i]<- modularity(temp_cl_active[[i]])
-}
+# Global smoothness
+gs=pd.DataFrame({'Method' : ["custom","iterative","survival","smoothed"],
+                 "SM-P":[tn.DCD.SM_P(com_custom),tn.DCD.SM_P(com_iterative),
+                         tn.DCD.SM_P(com_survival),tn.DCD.SM_P(com_smoothed)],
+                 "SM_N":[tn.DCD.SM_N(com_custom),tn.DCD.SM_N(com_iterative),
+                         tn.DCD.SM_N(com_survival),tn.DCD.SM_N(com_smoothed)],
+                 "SM-L":[tn.DCD.SM_L(com_custom),tn.DCD.SM_L(com_iterative),
+                         tn.DCD.SM_L(com_survival),tn.DCD.SM_L(com_smoothed)]})
 ```
-
-
-
-```r
-# The following code shows how to see modularity values 
-mod<-as.data.frame(mod_active,names(time))
-mod$date<-paste0(rownames(mod),"-01")
-mod$date<-as.Date(mod$date,format="%Y-%m-%d")
-
-#install.packages("clplot")
-my_colors = c("#FFF5EB","#FEE6CE","#FDD0A2","#FDAE6B","#FD8D3C",
-              "#F16913","#D94801","#A63603","#7F2704")
-clplot(x=decimal_date(mod$date), y=mod$mod_active, lwd=3, 
-              levels=c(0.33,0.36,0.39,
-              0.42,0.45,0.48,0.51,0.54), col=my_colors, 
-       showcuts=T , bty="n",xlab="",ylab = "modularity")
-```
-
-The modularity values change over time as follows:
+The results are presented by the following evaluation graph.
 
 <div class="figure">
-<img src="Fig1.png" alt="Fig. 1. Modularity changes over time" width="100%" />
-<p class="caption">Fig. 1. Modularity changes over time</p>
+<img src="Fig1.png" alt="Fig. 1. The results of the dynamic partition evaluation." width="100%" />
+<p class="caption">Fig. 1. The results of the dynamic partition evaluation.</p>
 </div>
 
+In this paper, we used the communities learned by applying the iterative community detection using Clauset-Newman-Moore greedy modularity maximization and matching.
 
-
-
-```r
-#The following block of code saves found static clusters into a df
-
-# Creating a summary data frame with users' community membership 
-# information across all time periods
-unique_users <- vector ("list", 96)
-
-# Extracting unique users from each static network 
-for (i in 1:length(temp_graphs_active))
-{
-  unique_users[[i]]<-V(temp_graphs_active[[i]])$name
-}  
-unique_users<- unique(unlist(unique_users))
-
-# Creating the data frame
-memb_df <- data.frame (user_id = unique_users)
-memb_df[,2:97] <- NA
-colnames (memb_df)<-c("user_id", 1:96) #remaning column names
-rownames (memb_df) <- memb_df$user_id
-memb_df$user_id <- NULL
-
-# Populating the data frame with the values from membership list
-  for (j in 1:length(temp_memb_active))
-  {
-    for (k in 1:length(temp_memb_active[[j]]))
-    {
-    memb_df [names(temp_memb_active[[j]][k]), j] <-  
-      temp_memb_active[[j]][k] 
-    }
-  }
-```
-
-
-
-### Community evolution tracking
-
-
-```r
-# Users and their static clusters were saved in the df 
-
-# The following block of code saves users and their clusters for each 
-# time period as a list of dataframes
-# each object in a list is a df for the specific time periods
-
-# Creating a column user_id in the df with static clusters
-memb_df$user_id<-rownames(memb_df)
-
-# function for splitting the df into the list of lists each object in 
-# the list contains names of users that are in the same cluster
-split_tibble <- function(tibble, column = 'col') {
-  tibble %>% split(., .[,column]) %>% lapply(., function(x) 
-    x[,setdiff(names(x),column)])
-}
-
-#creating an empty list
-memb<-list()
-
-# for-loop to create the list that contains clusters
-# each element is a month
-for (i in 1:(length(names(memb_df))-1)){
-  j<-as.character(i)
-  memb[[i]] <- split_tibble(memb_df[,c("user_id",i)], j) # the df is 2 
-                             # column: user_id and the month number
-  # j is the name of the column
-  print(i)} # tracking the progress
-```
-
-
-```r
-# The next block of code tracks the community evolution over time
-
-# First, we need to copy the first object in the list of static 
-# clusters
-# Here, we copy only the clusters of the first time period
-memb2<-memb[[1]]
-
-# Changing the names of the clusters to the form "N of the period_N of 
-# cluster"
-
-# In that way, we can also track when is the moment when the cluster 
-# reaches its peak in size
-names(memb2)<-paste0(1,"_",names(memb2)) # for period 1, 
-# the names are 1_(1/2/3...)
-
-# Creating a new object that will store temporary information needed 
-# later
-p<-data.frame(Cluster=character(), # the number of the current cluster
-              Number_of_elements=numeric(), # the number of the elements
-              all_elements=numeric(), # the number of the elements
-              cl_num=numeric(), # the number of the cluster
-              stringsAsFactors=FALSE)
-
-# Writing a for-loop to track the evolution of the clusters
-for (i in 2:length(memb)){ # Starting from the second time period in 
-                           # the list memb
-                           # The first one is already in a new list of 
-                           # objects memb2
-  
-  for (j in 1:length(memb[[i]])){ # For each static cluster within the 
-                                  # current time period 
-    
-    
-    p<-p[0,] # Deleting previous information from the temporary df
-    cat("element ", j, " in the period ",i,"\n") # the number of the 
-                                                 # static cluster
-                                                 # within the time 
-                                                 # period
-    
-    # The next for-loop tracks how many of the users in the current 
-    # static cluster also existed before 
-    # It tracks in which distinguished dynamic clusters those users 
-    # appeared,
-    # Calculates the number of users in the static cluster, which  
-    # appeared in the clusters of the previous time periods
-    
-    for (k in 1:length(memb2)){ # Check for every dynamic cluster in 
-      # the list memb2
-                                # Those dynamic clusters that we found 
-      # before
-      cat("k = ", k, "\n") # Tracking the progress
-      if (sum(memb[[i]][[j]] %in% memb2[[k]])>=1){ # If any of the users 
-        # in the current static cluster were in any of the clusters
-        # of the previous time periods
+```py
+# Extracting the communities
+# All nodes belonged to several communities within the examined time period
+# The main community of each node is the communitity, in which the node appeared the most
+p=com_custom.affiliations()
+df_com = pd.DataFrame({'node' : [],'community':[]})
+for i in p.keys():
+    main_com_len=1
+    for j in p[i].keys():
         
-        a<-c(names(memb2)[k], # save the name of the dynamic cluster
-             sum(memb[[i]][[j]] %in% memb2[[k]]), # save the number of 
-             # users that appear in the dynamic cluster
-             length(memb[[i]][[j]]), #save the length of the current 
-             # cluster 
-             k)# save the number of the dynamic cluster
+        if len(p[i][j])>main_com_len:
+            main_com=j
+            main_com_len=len(p[i][j])
+    df_com=df_com.append({'node' : i,'community':main_com},ignore_index=True)
 
-        p[(nrow(p)+1),]<-a # add this information to the temporary df
-      } 
-    }
-    
-    # After the number of users that match users, which appeared in the 
-    # previous time periods, was calculated and we tracked in which 
-    # dynamic clusters users of the current cluster appeared before,
-    # we need to do the following
-    
-    if (nrow(p)>1){ # If we found at least one matching user
-      
-      if (max(p$Number_of_elements)<length(memb[[i]][[j]])/2){ # if 
-        # the max number of static cluster users that appeared in the 
-        # dynamic clusters before is less than half the number of the 
-        # static cluster users, then
-
-        if (max(p$Number_of_elements)>=3 & #if it is at least more 
-            # than 3
-            (nrow(p[p$Number_of_elements==
-                    max(p$Number_of_elements),])==1)){ 
-          # if the max number of matching users appears only in one of  
-          # the dynamic clusters
-          memb2[[as.numeric(p$cl_num[which.max
-                                     (p$Number_of_elements)])]]<-
-            unique(append(memb2[[as.numeric
-                                 (p$cl_num[which.max
-                                           (p$Number_of_elements)])]],
-                          memb[[i]][[j]]))
-          # then, add all users of the static cluster to the elements 
-          # of that dynamic cluster
-          
-          # the next for-loop will delete all the elements that were 
-          # assigned to the dynamic cluster from other dynamic clusters, 
-          # if which they appeared before
-          # In that way, the elements would not appear in several 
-          # dynamic clusters
-          for (l in 1:nrow(p)){
-            memb2[[as.numeric(p$cl_num[l])]]<-
-              unlist(memb2[[as.numeric(p$cl_num[l])]])
-            [which(!memb2[[as.numeric(p$cl_num[l])]] %in% 
-                     memb[[i]][[j]])]}
-          cat("p > 1. Number of elements less than ",
-              length(memb[[i]][[j]])/2,"but more than 2\n") 
-          # for tracking the progress
-          
-        } else { #if the maximum number of matching elements 
-          # is less than 3, then we need to create a new dynamic cluster
-          
-          
-          memb2<-append(memb2,list(memb[[i]][[j]])) # appending to 
-          # the list of dynamic clusters
-          names(memb2)[length(memb2)]<-paste0(i,"_",j) # assigning a 
-          # new name specifying the number of the time period
-          
-          # Here, once again we delete the matched users from other 
-          # dynamic clusters
-          for (l in 1:nrow(p)){
-            memb2[[as.numeric(p$cl_num[l])]]<-
-              unlist(memb2[[as.numeric(p$cl_num[l])]])
-            [which(!memb2[[as.numeric(p$cl_num[l])]] %in% 
-                     memb[[i]][[j]])]}
-          cat("p > 1. Number of elements less than 3\n")
-        }
-        
-        
-          
-      } else { # If the number of matched users is more than half 
-        # of the users in the static cluster, 
-        
-        # then all the users of the static cluster, belong to this 
-        # dynamic cluster
-        memb2[[as.numeric(p$cl_num[which.max(p$Number_of_elements)])]]<-
-          unique(append(memb2
-                        [[as.numeric(p$cl_num
-                                [which.max(p$Number_of_elements)])]],
-                        memb[[i]][[j]]))
-        
-        # Retrieving the users of the static cluster from other 
-        # dynamic clusters
-        for (l in 1:nrow(p)){
-          memb2[[as.numeric(p$cl_num[l])]]<-
-            unlist(memb2[[as.numeric(p$cl_num[l])]])
-          [which(!memb2[[as.numeric(p$cl_num[l])]] %in% 
-                   memb[[i]][[j]])]}
-        cat("p > 1. Number of elements more than ",
-            length(memb[[i]][[j]])/2,"\n")
-      }
-      
-      
-      
-    } else if(nrow(p)>0){ # If the elements match only one dynamic 
-      # cluster
-      
-      
-      if (max(p$Number_of_elements)<length(memb[[i]][[j]])/2){
-        # if the max number of static cluster users that appeared in 
-        # the dynamic cluster
-        # before is less than half the number of the static cluster 
-        # users, then
-        
-        # Add it as a new dynamic cluster
-        memb2<-append(memb2,list(memb[[i]][[j]]))
-        names(memb2)[length(memb2)]<-paste0(i,"_",j) # Assign the 
-        # name to the cluster
-        
-        # Retrieve the users from other dynamic clusters
-          memb2[[as.numeric(p$cl_num[1])]]<-
-            unlist(memb2[[as.numeric(p$cl_num[1])]])
-          [which(!memb2[[as.numeric(p$cl_num[1])]] %in% 
-                   memb[[i]][[j]])]
-          cat("p = 1. Number of elements less than ",
-              length(memb[[i]][[j]])/2,"\n")
-     
-          
-       } else {# if the max number of static cluster users that 
-        # appeared in the dynamic cluster
-        # before is more or equal to half the number of the static 
-        # cluster users, then
-        
-        # Assign those users to the distinguished dynamic cluster
-        memb2[[as.numeric(p$cl_num[which.max(p$Number_of_elements)])]]<-
-          unique(append(memb2
-                  [[as.numeric(p$cl_num
-                          [which.max(p$Number_of_elements)])]],
-                  memb[[i]][[j]]))
-        
-        cat("p = 1. Number of elements more than ",
-            length(memb[[i]][[j]])/2,"\n")
-       }
-      
-      
-    }else { # Otherwise, there are no matches 
-      
-      memb2<-append(memb2,list(memb[[i]][[j]])) # Create a new cluster
-      names(memb2)[length(memb2)]<-paste0(i,"_",j) # Assign a name 
-      cat("No similar elements\n")
-    }
-    
-    j<-j+1
-    
-  }
-}
-
-# Next, we need to convert list into a df
-
-#install.packages("plyr",dependencies=T)
-library (plyr) # to convert list into a df
-
-memb_df <- ldply (memb2, data.frame) # Converting
-
-# Saving as a df with one column as a list of users
-# and other - as a list of dynamic clusters
-memb_df <- memb_df [,c(2,1)]
-names(memb_df)<-c("user_id","dyn_cluster") # renaming the columns
-
-
-# Merge the results with the main dataframe
-
-data<-left_join(data,memb_df)
-# Now, we have a new column dyn_cluster
+# Saving the df for the latter use
+df_com.to_csv('dyn_com.csv',index=False)
 ```
 
 ## Sentiment analysis
@@ -621,11 +330,11 @@ tok <- tok[order(tok$doc_id),]
 ### Applying word embeddings
 
 ```r
-# The following block of code shows how word embedding 
+# The following block of code shows how the word embedding 
 # dictionary was used
 # to find the dimensions of tokens in the 100-dimensional space
 
-# First, cleaning up the corpos
+# First, cleaning up the corpus
 
 
 # Calculating the frequency of each word
@@ -873,7 +582,7 @@ The following graph shows the terms most likely to be associated with positive a
 
 After tweets were divided into positive, negative and neutral categories, the following statistics were received: 
 1. Number of active users in each of the dynamic clusters;
-2. Proportion  difference  between  the  number  of  negative  and  positive tweets;
+2. The proportion  difference  between  the  number  of  negative  and  positive tweets;
 3. Overall sentiment value difference over time;
 4. Sentiment value difference for the biggest dynamic clusters over time;
 5. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views;
@@ -904,7 +613,7 @@ vis1<-vis1[which(!is.na(vis1$dyn_cluster)),]
 # Dropping the date
 vis1<-vis1[,c("user_id","month","dyn_cluster")]
 
-# To calculate the number of users, we need to drop dublicated rows
+# To calculate the number of users, we need to drop duplicated rows
 vis1<-unique(vis1)
 
 # Counting the number of users within each dynamic cluster 
@@ -943,7 +652,7 @@ vis1%>%
 
 
 ```r
-# The following block of code shows how to visualize proportion  
+# The following block of code shows how to visualize the proportion  
 # difference between  the  number  of  negative  and  positive 
 # tweets over time
 
@@ -993,7 +702,7 @@ clplot(x=decimal_date(vis2$month), y=vis2$mean, lwd=3,
 
 
 ```r
-# The following block of code shows how to visualize proportion  
+# The following block of code shows how to visualize the proportion  
 # overall sentiment value difference over time
 
 # Installing the needed packages
@@ -1092,7 +801,7 @@ ggplot()+geom_smooth(vis4,mapping=aes(month,sd,
 
 
 ```r
-# The following block of code shows how to visualize the  proportion  
+# The following block of code shows how to visualize the  the proportion  
 # of  the  connections  between  the  users  expressing similar views 
 # (i.e., negative, neutral or positive) to the number of connections 
 #  between the  users  expressing  opposite  views
@@ -1273,7 +982,7 @@ The following graph shows for how many months each of those users was involved i
 
 
 ```r
-# The following block of code shows how calculate and visualize 
+# The following block of code shows how to calculate and visualize 
 # the  proportion  of  the  connections  between  the  users  
 # expressing negative views to the number of connections between the  
 # users  expressing  negative  and neutral or positive views
