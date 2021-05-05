@@ -792,7 +792,7 @@ vis4<-vis4[vis4$dyn_cluster %in% big_clust$dyn_cluster,]
 # Loading the color package
 library("viridis")   
 # Visualizing 
-ggplot()+geom_smooth(vis4,sd=F,mapping=aes(month,sd,
+ggplot()+geom_smooth(vis4,se=F,mapping=aes(month,sd,
                                     color=dyn_cluster,
                                     fill=dyn_cluster),
                      na.rm=T)+
