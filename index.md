@@ -654,7 +654,7 @@ vis1%>%
 ```
 
 <div class="figure">
-<img src="Fig3.png" alt="Fig. 3. Growth of the users’ clusters in time" width="60%" />
+<img src="Fig3.png" alt="Fig. 3. Growth of the users’ clusters in time" width="100%" />
 <p class="caption">Fig. 3. Growth of the users’ clusters in time</p>
 </div>
 
