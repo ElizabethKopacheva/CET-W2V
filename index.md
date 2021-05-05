@@ -768,7 +768,7 @@ vis4<-vis4 %>% group_by(month,dyn_cluster) %>%
 clust_size<-unique(data[,c("user_id","dyn_cluster")]) %>% 
   group_by(dyn_cluster) %>% 
   dplyr::summarise(count=n()) %>% 
-  filter(!is.na(dyn_cluster)&count>9)
+  filter(!is.na(dyn_cluster)&count>100)
 
 # Keeping only those clusters that formed from the beginning to the 
 # end of the examined time period
@@ -783,9 +783,8 @@ big_clust<-data[which(data$dyn_cluster %in% clust_size$dyn_cluster),
 big_clust$begin<-as.character(big_clust$begin)
 big_clust$end<-as.character(big_clust$end)
 # Keeping only beeded clusters
-big_clust<-big_clust[which(big_clust$begin=="2012-01-01"&
-                             big_clust$end=="2019-12-01"),]
-
+big_clust<-big_clust[which(big_clust$begin<=as.Date("2014-01-01",format="%Y-%m-%d")&
+                               big_clust$end>=as.Date("2019-01-01",format="%Y-%m-%d")),]
 
 # Subsetting the dynamic clusters for visualization
 vis4<-vis4[vis4$dyn_cluster %in% big_clust$dyn_cluster,]
@@ -793,7 +792,7 @@ vis4<-vis4[vis4$dyn_cluster %in% big_clust$dyn_cluster,]
 # Loading the color package
 library("viridis")   
 # Visualizing 
-ggplot()+geom_smooth(vis4,mapping=aes(month,sd,
+ggplot()+geom_smooth(vis4,sd=F,mapping=aes(month,sd,
                                     color=dyn_cluster,
                                     fill=dyn_cluster),
                      na.rm=T)+
