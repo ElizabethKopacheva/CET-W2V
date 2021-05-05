@@ -981,7 +981,7 @@ ggplot(vis5,mapping=aes(x=month_diff,y=count,
   ylab("N of users")+xlab("N of months")+coord_flip()
 ```
 
-Only 48 users changed their opinion from positive to negative when getting involved into discussions with other users.
+Only 16 users changed their opinion from positive to negative when getting involved into discussions with other users.
 The following graph shows for how many months each of those users was involved into the discussions.
 <div class="figure">
 <img src="Fig8.png" alt="Fig. 8. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions" width="100%" />
