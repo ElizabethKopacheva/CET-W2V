@@ -709,24 +709,26 @@ clplot(x=decimal_date(vis2$month), y=vis2$mean, lwd=3,
 <p class="caption">Fig. 4. Proportion  difference  between  the  number  of  negative  and  positivetweets.</p>
 </div>
 
-### Overall sentiment value difference over time
-
+### Overall sentiment value difference over time 
 
 ```r
-# The following block of code shows how to visualize the proportion  
-# overall sentiment value difference over time
+# The following block of code shows how to visualize the 
+# mean and standard deviation of sentiment values over time
 
 # Installing the needed packages
-#install.packages("ggplot2",dependencies = T)
+#install.packages(c("ggplot2","ggpubr"),dependencies = T)
 
 # Loading the needed variables
 vis3<-data[,c("doc_id","created_at","sent_scaled")]
 # Creating a variable month
 vis3$month<- floor_date(vis3$created_at, "month")
-# Calculating the standard deviation of the sentiment values for 
+# Calculating the mean and standard deviation of the sentiment values for 
 # each time period
-vis3<-vis3 %>% group_by(month) %>% 
-  dplyr::summarise(sd=sd(sent_scaled,na.rm = T))
+vis3<-vis3 %>%
+  group_by(month) %>% 
+  dplyr::summarise(sd=sd(sent_scaled,na.rm = T), mean =mean(sent_scaled,na.rm = T))
+
+vis3$month <- as.POSIXct(vis3$month)
 
 # Loading the package
 library(ggplot2)
@@ -737,12 +739,120 @@ ggplot()+geom_smooth(vis3,mapping=aes(month,sd),
   theme(panel.background = element_rect(fill = NA),
         legend.position = "none")+
   ylab("SD of the sentiment values")+xlab("")
+  
+ 
+
+# SD plot
+sd<- ggplot(vis3, aes(x = month, y = sd)) + geom_point(size = 0.5) +
+  geom_line(color = "#636363")+
+  geom_smooth(method = "loess", color = "#cc4c02", fill = "lightgrey")+
+  labs(y="Standard deviation of sentiment values", x="Month, year")+
+  scale_x_datetime(date_breaks = "4 months", date_labels="%m-%Y")+
+  theme(axis.text.x = element_text(angle = 90, vjust=0.5), 
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+# Mean plot
+mean<- ggplot(vis3, aes(x = month, y = mean)) + geom_point(size = 0.5) +
+  geom_line(color = "#636363")+
+  geom_smooth(method = "loess",color = "#cc4c02", fill = "lightgrey")+
+  labs(y="Mean of sentiment values", x="Month, year")+
+  scale_x_datetime(date_breaks = "4 months", date_labels="%m-%Y")+
+  theme(axis.text.x = element_text(angle = 90, vjust=0.5), 
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+library(ggpubr)
+ggarrange(meean,sd,  ncol = 1, nrow = 2, heights = c(10, 10))
+
 ```
 <div class="figure">
 <img src="Fig5.png" alt="Fig. 5. Overall sentiment value difference over time." width="100%" />
 <p class="caption">Fig. 5. Overall sentiment value difference over time.</p>
 </div>
 
+### Hartigan’s dip test of unimodality
+
+```r
+# Installing the needed packages
+#install.packages("diptest")
+library(diptest)
+
+# Loading the needed variables
+dip_test<-data[,c("doc_id","created_at","sent_scaled")]
+# Creating a variable month
+dip_test$month<- floor_date(dip_test$created_at, "month")
+# Ordering the df
+dip_test <-dip_test [order(dip_test$month, decreasing = F),]
+
+# Examining the results of the dip test
+for (i in (1:length(unique(dip_test$month))))
+{
+  print(dip.test(dip_test$sent_scaled [dip_test$month == unique(dip_test$month)[i]]))
+ }
+
+# Density plots for the key periods
+
+jan2012<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[1],], aes(x=sent_scaled)) + 
+  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
+  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
+  ylim(0, 11)+
+  labs(title = "January 2012  (n = 1)", y="Density", x="Scaled sentiment values")+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+
+dec2015<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[48],], aes(x=sent_scaled)) + 
+  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
+  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
+  ylim(0, 11)+
+  labs(title = "December 2015 (n = 48)", y="Density", x="Scaled sentiment values")+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+
+oct2017<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[70],], aes(x=sent_scaled)) + 
+  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
+  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
+  ylim(0, 11)+
+  labs(title = "October 2017  (n = 70)", y="Density", x="Scaled sentiment values")+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+
+dec2019<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[96],], aes(x=sent_scaled)) + 
+  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
+  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
+  ylim(0, 11)+
+  labs(title = "December 2019  (n = 96)", y="Density", x="Scaled sentiment values")+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+ggarrange(jan2012, dec2015, oct2017, dec2019, ncol = 2, nrow = 2)
+
+```
+<div class="figure">
+<img src="Fig11.png" alt="Fig. 5. Overall sentiment value difference over time." width="100%" />
+<p class="caption">Fig. 5. Overall sentiment value difference over time.</p>
+</div>
 
 ### Sentiment value difference for the biggest dynamic clusters over time
 
