@@ -773,8 +773,8 @@ ggarrange(meean,sd,  ncol = 1, nrow = 2, heights = c(10, 10))
 
 ```
 <div class="figure">
-<img src="Fig5.png" alt="Fig. 5. Overall sentiment value difference over time." width="100%" />
-<p class="caption">Fig. 5. Overall sentiment value difference over time.</p>
+<img src="Fig5.png" alt="Fig. 5. Mean and standard deviation of the overall sentiment values." width="100%" />
+<p class="caption">Fig. 5. Mean and standard deviation of the overall sentiment values.</p>
 </div>
 
 ### Hartigan’s dip test of unimodality
@@ -850,8 +850,8 @@ ggarrange(jan2012, dec2015, oct2017, dec2019, ncol = 2, nrow = 2)
 
 ```
 <div class="figure">
-<img src="Fig11.png" alt="Fig. 5. Overall sentiment value difference over time." width="100%" />
-<p class="caption">Fig. 5. Overall sentiment value difference over time.</p>
+<img src="Fig11.png" alt="Fig. 6. Sentiment distributions during the key periods." width="100%" />
+<p class="caption">Fig. 6. Sentiment distributions during the key periods.</p>
 </div>
 
 ### Sentiment value difference for the biggest dynamic clusters over time
@@ -913,8 +913,8 @@ ggplot()+geom_smooth(vis4,se=F,mapping=aes(month,sd,
   ylab("SD of the sentiment values")+xlab("")
 ```
 <div class="figure">
-<img src="Fig6.png" alt="Fig. 6. Sentiment value difference for the biggest dynamic clusters over time." width="100%" />
-<p class="caption">Fig. 6. Sentiment value difference for the biggest dynamic clusters over time.</p>
+<img src="Fig6.png" alt="Fig. 7. Sentiment value difference for the biggest dynamic clusters over time." width="100%" />
+<p class="caption">Fig. 7. Sentiment value difference for the biggest dynamic clusters over time.</p>
 </div>
 
 ### The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views
@@ -995,8 +995,8 @@ clplot(x=decimal_date(edges$month), y=edges$prop, lwd=3,
        showcuts=T , bty="n",xlab="",ylab=expression(y[2]))
 ```
 <div class="figure">
-<img src="Fig7.png" alt="Fig. 7. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views." width="100%" />
-<p class="caption">Fig. 7. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views.</p>
+<img src="Fig7.png" alt="Fig. 8. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views." width="100%" />
+<p class="caption">Fig. 8. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views.</p>
 </div>
 
 ### Number of users who had a positive opinion on the matter of migration and later changed it to the negative opinion
@@ -1094,8 +1094,8 @@ ggplot(vis5,mapping=aes(x=month_diff,y=count,
 Only 16 users changed their opinion from positive to negative when getting involved into discussions with other users.
 The following graph shows for how many months each of those users was involved into the discussions.
 <div class="figure">
-<img src="Fig8.png" alt="Fig. 8. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions" width="100%" />
-<p class="caption">Fig. 8. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions</p>
+<img src="Fig8.png" alt="Fig. 9. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions" width="100%" />
+<p class="caption">Fig. 9. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions</p>
 </div>
 
 ### The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between the  users  expressing  negative  and neutral or positive views
@@ -1180,8 +1180,8 @@ clplot(x=decimal_date(edges$month), y=edges$prop, lwd=3,
 
 The following graph shows that users expressing negative views prefer to stay in contact with the users of the same views.
 <div class="figure">
-<img src="Fig9.png" alt="Fig. 9. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views." width="100%" />
-<p class="caption">Fig. 9. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views.</p>
+<img src="Fig9.png" alt="Fig. 10. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views." width="100%" />
+<p class="caption">Fig. 10. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views.</p>
 </div>
 
 ### Robustness test
@@ -1267,6 +1267,6 @@ ggplot(mdata,aes(x=month,y=value,col=variable,fill=variable))+
 ```
 
 <div class="figure">
-<img src="Fig10.png" alt="Fig. 10. Change-points of the sentiment values found in respect to the time-periods." width="100%" />
-<p class="caption">Fig. 10. Change-points of the sentiment values found in respect to the time periods.</p>
+<img src="Fig10.png" alt="Fig. 11. Change-points of the sentiment values found in respect to the time-periods." width="100%" />
+<p class="caption">Fig. 11. Change-points of the sentiment values found in respect to the time periods.</p>
 </div>
