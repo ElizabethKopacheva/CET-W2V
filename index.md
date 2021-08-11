@@ -130,7 +130,7 @@ com_custom = tn.DCD.iterative_match(dg_sn,match_function=custom_match_function,C
 com_survival = tn.DCD.label_smoothing(dg_sn)
 
 # Looking for the communities applying smoothed Louvain
-com_survival = tn.DCD.label_smoothing(dg_sn)
+com_smoothed = tn.DCD.smoothed_louvain(dg_sn)
 ```
 Dynamic partitions were evaluated based on the modularity at each step, consecutive similarity and global smoothness scores, such as the average value of partition smoothness, node smoothness and label smoothness.
 
