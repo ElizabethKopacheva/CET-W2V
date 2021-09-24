@@ -288,7 +288,49 @@ test = test.assign(vader_score = pd.Series(vader_score))
 data.to_csv('texts_with_sentiment_scores.csv',encoding='utf-8-sig')
 test.to_csv('test_dataset.csv',encoding='utf-8-sig')
 ```
+### Reliability test
+After, we computed the VADER scores for the annotated tweets, we examined the distribution of the sentiment value in each stance group, identified by author, who annotated the texts.
+```r
+# Loading the test dataset
+# Here, column coding contains the scores identified by the author,
+# who annotated the texts
+test<-read.csv("test_dataset.csv",header=T,encoding="UTF-8")
 
+# Visualising the results
+library(ggplot2)
+
+p1<-ggplot(test, aes(x=vader_score, color=coding,fill=coding)) +
+  geom_density(alpha=0.8)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "top",
+        legend.title = element_blank(),
+        axis.text = element_text(size=20),
+        axis.title = element_text(size=24))+
+  scale_color_manual(values = c("#1818ee","#b4de2c","#e1091d"))+
+  scale_fill_manual(values = c("#1818ee","#b4de2c","#e1091d"))+
+  ylab("Density")+xlab("")
+
+
+p2<-ggplot(test, aes(x=vader_score, color=coding,fill=coding)) +
+  geom_boxplot(notch=T,lwd=3)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title = element_text(size=24))+
+  scale_color_manual(values = c("#1818ee","#b4de2c","#e1091d"))+
+  scale_fill_manual( values =alpha(c("#1818ee","#b4de2c","#e1091d"), .8))+
+  ylab("")+xlab("Sentiment value")
+
+library(ggpubr)
+ggarrange(p1,p2,nrow=2)
+```
+
+<div class="figure">
+<img src="Fig2.png" alt="Fig. 2. Test statistics on the VADER's accuracy of measuring the tonality of the tweets." width="60%" />
+<p class="caption">Fig. 2. Test statistics on the VADER's accuracy of measuring the tonality of the tweets.</p>
+</div>
+
+The test also helped us to find the border values for each group of the texts: in particular, positive, neutral and negative.
 
 
 ### Robustness check 
