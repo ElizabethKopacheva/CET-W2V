@@ -195,335 +195,102 @@ data<-left_join(data,memb_df)
 ```
 ## Sentiment analysis
 
-After acquiring the information about the placement of users in the dynamic clusters, we have conducted sentiment analysis. To do so, we did the following.
-
-1. Cleaned the text removing non-informative words, symbols and numbers;
-2. Used part-of-speech tagging to keep only nouns, adjectives and verbs;
-3. Applied word embedding dictionary to receive coordinates of the tweets in the 100-dimensional space;
-4. Applied k-means clustering to cluster tweets by topics;
-5. Applied sentiment dictionary to compute the mean sentiment of each tweet;
-6. Scaled the sentiment values of each tweet depending on the k-means cluster, found on step 4;
-7. Divided the tweets into positive, neutral and negative in sentiment tweets
-8. Conducted a robustness check to see if the tweets fit the sentiment groups
-
-### Cleaning up the texts of the tweets
-
-
+After acquiring the information about the placement of users in the dynamic clusters, we have conducted sentiment analysis using VADER. 
 ```r
-# The following block of code shows how the texts of the tweets were 
-# reprocessed
-
-# First, loading the required packages 
-#install.packages(c("tm","tidyverse","stopwords","quanteda",
-# "textclean"))
-library(tm)
-library (tidyverse) 
-library (stopwords)
-library (quanteda)
-library (textclean)
-
-# Adding one more column to identify tweets
+# Adding the column doc_id
 data$doc_id<-1:length(data$text)
 
-# Cleaning up the texts
-tweet_text <- data$text %>%
-  gsub("[^[:alnum:][:blank:][:punct:]]", " ", .) %>% 
-  # removing special chars
-  gsub("[ |\t]{2,}", " ", .)%>% # tabs
-  gsub("http\\S+", " ", .)%>% # removing https
-  gsub ("www\\S+", " ", .)%>%#removing www
-  gsub ("&\\S+", " ", .)%>%
-  gsub("@\\S+", " ", .)%>% # mentions
-  gsub('\\p{So}|\\p{Cn}', '', ., perl = TRUE)%>% # removing emojis
-  replace_html (., symbol = F) %>% # removing html markup
-  replace_kern () %>% #K E R N
-  gsub("\\.(?=[A-Za-z])","\\. ", .,perl=TRUE)%>% 
-  # inserting a white space after full stop
-  str_trim ()%>% # trailing whitespaces
-  str_squish()%>% 
-  # whitespaces at the beginning and the end of the sentence
-  gsub(" [ a-zA-ZäÄöÖåÅ ] ","", .)# deleting all one character words
-data$new_text<-tweet_text
+# Exporting the texts of the tweets
+write.csv(data[,c("doc_id","text")],
+          file=file('tweet_texts.csv',encoding="UTF-8"))
+```
+```py
+# Loading the data in Python
+import pandas as pd
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# Removing duplicated and short entries
-data <- data [duplicated (data$text) == F,] 
-# removing duplicated strings
-data<- data [str_count(as.character(data$new_text), '\\w+')>3,]
-# removing strings with less than three words
+# load the texts
+data = pd.read_excel('tweet_texts.csv')
 
+# preprocess texts (remove urls, mentions and e-mail addresses, as well as html markup)
+text = data["text"].astype(str) 
 
-# Specifying customary stop words
-twitter_stopwords <-  c("osv", "pga", "the", "dvs", 
-                        "iaf", "iom", "etc", "a", 
-                        "of", "obs", "iofs", "bl", 
-                        "via", "sen", "hos", "via",  
-                        "mm", "per", "ex", "ca", "tex", 
-                        "to", "and", "for", "tom", "sej", 
-                        "dej", "mej", "mfl", "dom")
+# remove html markup
+text = text.str.replace('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});',' ')
 
-data$new_text<- removeWords(data$new_text, twitter_stopwords) 
-# removing customized stopwords
-data$new_text<- removeWords(data$new_text, 
-                            stopwords::stopwords("sv", 
-                                      source = "stopwords-iso"))
-# removing stop words
-data$new_text<-tolower(data$new_text) # lowercasing everything 
+# remove tabs
+text= text.str.replace('[ |\t]{2,}', '', case=False)
 
-# Creating a new column containing only the hashtags
-#install.packages("stringr",dependencies = T)
-library(stringr)
+# remove urls 
+text= text.str.replace('http\S+|www.\S+', '', case=False)
 
-# For each text extracting the hashtags
-for (i in 1:nrow(data)){
-  if (i%%100==0){
-    cat("i is ",i,"\n")
-  }
-data$hashtags[i]<-list(stringr::str_extract_all(data$new_text[i],
-                                                "[^&]#\\S+")[[1]])
-}
-        
-# Creating a variable that contains text without hashtags and numbers
-data$t_wo_h<-data$new_text%>%
-  gsub("#\\S+", " ", .)%>% # removing hashtags
-  gsub("[0-9].*? ", " ", .) # deleting all of the numeric words
+# remove e-mails
+text= text.str.replace('\S+@\S+', '', case=False)
 
-# Saving the new object without hashtags as a corpus
-corp = corpus(data,
-              docid_field = "doc_id",
-              text_field = "t_wo_h")
+# remove mentions
+text= text.str.replace('@\S+', '', case=False)
+
+# remove additional links
+text= text.str.replace('bit\.ly\S+', '', case=False)
+
+# run sentiment analysis with VADER 
+analyzer = SentimentIntensityAnalyzer()
+vs_res=[]
+for row in text:
+    
+    vs = analyzer.polarity_scores(row)
+    vs_res.append(vs)
+    
+sample_list_vader = [item for item in vs_res]
+sample_scores_vader =[item['compound'] for item in sample_list_vader]   
+
+data =data.assign(vader_score = pd.Series(sample_scores_vader))
 ```
 
-### Parts-of-speech tagging
+We repeated the same actions to calculate sentiments of the manually annotated texts.
 
-```r
-# The following block of code shows how to apply parts-of-speech 
-# tagging
+```py
+# repeat sentiment analysis on the manually annotated tweets
+test = pd.read_csv('annotated_texts.csv', encoding='utf-8')
 
-# For the Swedish language, udpipe package was used to tagg the tokens
-# Udpipe also allowed us to lemmatize tokens
-#install.packages("udpipe",dependencies = T)
-library(udpipe)
+# preprocess texts (remove urls, mentions and e-mail addresses, as well as html markup)
+test = test["text"].astype(str) 
 
-# Downloading the model for Swedish language
-mod<- udpipe_download_model(language = "swedish")
-udmodel<- udpipe_load_model(file = mod$file_model)
+# remove html markup
+text = text.str.replace('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});','')
 
-# Annotating the text
-x <- udpipe_annotate(udmodel, x = corp, doc_id =docnames(corp))
-x <- as.data.frame(x)
+# remove tabs
+text= text.str.replace('[ |\t]{2,}', '', case=False)
 
-# Cleaning the tokens
-x$token<-gsub("[^a-zA-ZäÄöÖåÅ]","",x$token) 
-# deleting all the symbols next to the words
-x$lemma<-gsub("[^a-zA-ZäÄöÖåÅ]","",x$lemma)
-# deleting all the symbols next to the lemmas
+# remove urls 
+text= text.str.replace('http\S+|www.\S+', '', case=False)
 
-# Using universal POS tags
-x$uposn<-as_phrasemachine(x$upos)
-x$uposn<-ifelse(x$upos=="NUM","NUM",x$uposn) 
-# all numbers should be coded as numbers
-# We don't need numbers, so, we want them to be recognized
-# The same with punctuation
-x$uposn<-ifelse(x$upos=="PUNCT","PUNCT",x$uposn)
+# remove e-mails
+text= text.str.replace('\S+@\S+', '', case=False)
 
-# Choosing only nouns and verbs
-tok<-x[which(x$uposn %in% c("N","V","A")),c(1,7)]
+# remove mentions
+text= text.str.replace('@\S+', '', case=False)
 
-# Saving the number of the 
-tok$doc_id<-gsub("doc","",tok$doc_id) 
-# keeping just the number of the doc
+# remove additional links
+text= text.str.replace('bit\.ly\S+', '', case=False)
 
-# Ordering by doc_id
-tok$doc_id<-as.numeric(tok$doc_id)
-tok <- tok[order(tok$doc_id),]
+# perform sentiment analysis
+vs_res=[]
+for row in text:
+    vs = analyzer.polarity_scores(row)
+    vs_res.append(vs)
+
+list_vader = [item for item in vs_res]
+vader_score =[item['compound'] for item in list_vader]
+test = test.assign(vader_score = pd.Series(vader_score))
+
+# save the results 
+data.to_csv('texts_with_sentiment_scores.csv',encoding='utf-8-sig')
+test.to_csv('test_dataset.csv',encoding='utf-8-sig')
 ```
 
-### Applying word embeddings
-
-```r
-# The following block of code shows how the word embedding 
-# dictionary was used
-# to find the dimensions of tokens in the 100-dimensional space
-
-# First, cleaning up the corpus
 
 
-# Calculating the frequency of each word
-a<-tok %>%
-  group_by(lemma) %>%
-  summarize(n()) %>%
-  arrange(n())
-
-# Calculating in how many documents each word appear
-b<-unique(tok) %>%
-  group_by(lemma) %>%
-  summarize(n())%>%
-  arrange(n())
-
-a<-a[order(-a$`n()`),]
-b<-b[order(-b$`n()`),]
-
-# Excluding words that are the most and the least frequent 
-excl_words<-rbind(a[which(a$`n()`>14000|a$`n()`<30),],
-                  b[which(b$`n()`>15000|b$`n()`<10),])
-tok<-tok[-which(tok$lemma %in% excl_words$lemma),]
-
-# Adding the list of tokens into the df
-t<- tok %>% group_by(doc_id) %>% summarise(tokens=list(lemma)) 
-# grouping by doc_id
-t<-as.data.frame(t) 
-t$doc_id<-as.numeric(t$doc_id)
-
-data<-left_join(data,t)# adding to the df
-
-# Importing the word embedding dictionary 
-# Download the dictionary at http://vectors.nlpl.eu/repository/
-
-#install.packages("rio")
-library(rio) #to load that word embedding dictionary
-
-word_embeddings <-rio::import('model.txt', encoding = "UTF-8") 
-# importing the dictionary
-
-names(word_embeddings)[1]<-"lemma" 
-# changing the name of the first column
-# Joining tok dataset and word embeddings by lemma
-word_embed<-left_join(tok,word_embeddings)
-
-# Getting coordinates for each doc_id
-# Taking the mean of all words in the tweet
-word_embed<- word_embed %>%
-  group_by(doc_id) %>%
-  summarise_if(is.numeric, mean, na.rm = TRUE)
-```
-
-### K-means clustering
-
-```r
-# The following block of code shows how clustering was performed
-
-# Deleting the column with the doc_id and saving doc_id as rownames
-rownames(word_embed)<-word_embed$Group.1
-word_embed<-word_embed[,-1]
-
-# Choosing the number of k
-#install.packages("factoextra", dependencies = T)
-library(factoextra)
-
-
-wss <- (nrow(word_embed)-1)*sum(apply(word_embed,2,var))
-for (i in 2:15) {
-  print(i)
-  wss[i] <- sum(kmeans(word_embed,centers=i)$withinss)}
-plot(1:25, wss, type="b", xlab="Number of Clusters",
-     ylab="Within groups sum of squares")
-
-
-fit <- kmeans(word_embed, 5) # 5 cluster solution is the best
-
-# Appending cluster assignment
-word_embed <- data.frame(word_embed, fit$cluster)
-word_embed$doc_id<-rownames(word_embed)# creating a column doc_id
-word_embed<-word_embed[,101:102] # subsetting the df to keep only 
-# doc_id and the cluster number
-names(word_embed)[1]<-"we_cluster"# renaming the column containing 
-# the number of clusters
-
-# Adding it to the df
-data<-left_join(data,word_embed)
-```
-
-### Sentiment analysis
-
-```r
-# The following block of code shows how to apply  
-# sentiment analysis to the data
-
-# First, loading the dictionary
-# Dictionary can be downloaded at 
-# https://spraakbanken.gu.se/resurser/sensaldo
-
-# Loading the dictionary 
-library(rio)
-sent_dict <-rio::import('sensaldo-base-v02.txt', encoding = "UTF-8")
-
-# Removing symbols and numbers from the dictionary 
-sent_dict$V1<-gsub("..[0-9]+","",sent_dict$V1)
-
-# Changing the names of the columns
-names(sent_dict)<-c("lemma","sentiment")
-# There are different sentiments for each word. 
-# We use the min of the sentiments
-sent_dict<-sent_dict%>%group_by(word)%>%
-  summarize(sentiment=min(sentiment))
-
-
-# Joining with the tok object
-x2<-left_join(tok,sent_dict)
-# Grouping by doc_id, taking the mean of the tokens
-x2<-aggregate(x = x2$sentiment, by = list(x2$doc_id),
-              FUN = mean,na.rm=T)
-names(x2)<-c("doc_id","sentiment")
-
-# Adding the sentiment values to the df
-data<-left_join(data,x2)
-```
-### Scaling the sentiment values
-
-
-```r
-# The following block of code shows how the sentiment values were 
-# scaled
-
-# Adding to the x2 object cluster groups that we got as the result of
-# applying word embeddings and clustering 
-x2<-left_join(x2,word_embed)
-
-#Creating an empty object
-z<-x2[0,]
-
-# Adding scaled values to the new object 
-for (i in 1:5){
-  a<-subset(x2,we_cluster==i)
-  a$sentiment<-scale(a$sentiment,scale=F)
-  a<-a[order(-a$sentiment),]
-  z<-rbind(z,a)
-}
-
-# Changing the names of the columns
-names(z)[2]<-"scales_sent"
-
-# Adding the new sentiment values to the df 
-```
-### Dividing the tweets into positive, negative and neutral
-
-
-```r
-# The following block of code shows how the tweets were divided into 
-# groups by sentiment
-
-# Looking at the quantiles
-quantile(data$sent_scaled,na.rm=T)
-
-# Creating a new object with the positive tweets
-positive<-subset(data,sent_scaled>=0.7184906)
-positive<-positive[order(positive$sent_scaled),]
-
-# Creating a new object with the negative tweets
-negative<-subset(data,sent_scaled<0)
-negative<-negative[order(-negative$sent_scaled),]
-
-# Adding new columns into the df
-data$negative_tw<-ifelse(data$doc_id %in% negative$doc_id,1,0) 
-# Dummy that shows only negative tweets
-data$pos_neg<-ifelse(data$doc_id %in% negative$doc_id,1,0)
-# Variable that shows if the tweet is negative, positive or neutral
-data$pos_neg<-ifelse(data$doc_id %in% positive$doc_id,2,
-                     data$pos_neg)
-
-data$positive_tw<-ifelse(data$doc_id %in% positive$doc_id,1,0)# Dummy 
-# that shows only positive tweets
-```
 ### Robustness check 
 
 
