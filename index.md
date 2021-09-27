@@ -499,7 +499,7 @@ fightin_words_plot(top_features,
 
 The following graph shows the terms most likely to be associated with positive and negative tweets
 <div class="figure">
-<img src="Fig2.png" alt="Fig. 3. Terms most likely associated with negative and positive tweets" width="60%" />
+<img src="Fig3.png" alt="Fig. 3. Terms most likely associated with negative and positive tweets" width="60%" />
 <p class="caption">Fig. 3. Terms most likely associated with negative and positive tweets</p>
 </div>
 
@@ -554,8 +554,8 @@ vis1%>%
 ```
 
 <div class="figure">
-<img src="Fig3.png" alt="Fig. 3. Growth of the users’ clusters in time" width="100%" />
-<p class="caption">Fig. 3. Growth of the users’ clusters in time</p>
+<img src="Fig4.png" alt="Fig. 4. Growth of the users’ clusters in time" width="100%" />
+<p class="caption">Fig. 4. Growth of the users’ clusters in time</p>
 </div>
 
 
@@ -604,8 +604,8 @@ ggplot(vis2, aes(x=month,y=value,color=variable,fill=variable)) +
 ```
 
 <div class="figure">
-<img src="Fig4.png" alt="Fig. 4. Proportion of the tweets of a specific sentiment." width="100%" />
-<p class="caption">Fig. 4. Proportion of the tweets of a specific sentiment.</p>
+<img src="Fig5.png" alt="Fig. 5. Proportion of the tweets of a specific sentiment." width="100%" />
+<p class="caption">Fig. 5. Proportion of the tweets of a specific sentiment.</p>
 </div>
 
 ### Standard deviation and the mean of the sentiment values over time (in the whole network)
@@ -654,8 +654,8 @@ ggarrange(p1,p2,nrow=2)
 
 ```
 <div class="figure">
-<img src="Fig5.png" alt="Fig. 5. Mean and standard deviation of the overall sentiment values." width="100%" />
-<p class="caption">Fig. 5. Mean and standard deviation of the overall sentiment values.</p>
+<img src="Fig6.png" alt="Fig. 6. Mean and standard deviation of the overall sentiment values." width="100%" />
+<p class="caption">Fig. 6. Mean and standard deviation of the overall sentiment values.</p>
 </div>
 
 
@@ -782,7 +782,7 @@ p4<- ggplot(vis4, aes(x=vader_score,
 ggarrange(p1,p2,p3,p4,nrow=2,ncol=2)
 ```
 <div class="figure">
-<img src="Fig6.png" alt="Fig. 7. Sentiment distributions during the key periods." width="100%" />
+<img src="Fig7.png" alt="Fig. 7. Sentiment distributions during the key periods." width="100%" />
 <p class="caption">Fig. 7. Sentiment distributions during the key periods.</p>
 </div>
 ### Hartigan’s dip test of unimodality
@@ -834,10 +834,12 @@ ggplot(dipdf,
   ggeasy::easy_center_title()+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")
 ```
+
 <div class="figure">
-<img src="Fig11.png" alt="Fig. 6. Hartigan's Dip test statistic on the network level." width="100%" />
-<p class="caption">Fig. 6. Hartigan's Dip test statistic on the network level.</p>
+<img src="Fig8.png" alt="Fig. 8. Hartigan's Dip test statistic on the network level." width="100%" />
+<p class="caption">Fig. 8. Hartigan's Dip test statistic on the network level.</p>
 </div>
+
 ```r
 # Dip test for the network communities
 
@@ -933,9 +935,10 @@ clplot(x=decimal_date(ymd(paste0(df_vals$month,"-01"))),
        showcuts=T , bty="n",xlab="",
        ylab=expression("Ratio of polarised communities"))
 ```
+
 <div class="figure">
-<img src="Fig11.png" alt="Fig. 6. Ratio of polarised communities in the network." width="100%" />
-<p class="caption">Fig. 6. Ratio of polarised communities in the network.</p>
+<img src="Fig9.png" alt="Fig. 9. Ratio of polarised communities in the network." width="100%" />
+<p class="caption">Fig. 9. Ratio of polarised communities in the network.</p>
 </div>
 
 ### Mean and SD of the sentiment values in the 10 biggest communities
@@ -1014,8 +1017,8 @@ p3<-ggplot(vis5, aes(x=month,y=proportion,color=dyn_cluster)) +
 ggarrange(p1,p2,p3,nrow=3)
 ```
 <div class="figure">
-<img src="Fig7.png" alt="Fig. 8. Mean and standard deviation of sentiment values in the biggest dynamic communities." width="100%" />
-<p class="caption">Fig. 8. Mean and standard deviation of sentiment values in the biggest dynamic communities.</p>
+<img src="Fig10.png" alt="Fig. 10. Mean and standard deviation of sentiment values in the biggest dynamic communities." width="100%" />
+<p class="caption">Fig. 10. Mean and standard deviation of sentiment values in the biggest dynamic communities.</p>
 </div>
 
 ### The  proportion  of  the  homophilic relationships
@@ -1246,7 +1249,7 @@ ggarrange(p1,p2,nrow=2)
 ```
 
 <div class="figure">
-<img src="Fig9.png" alt="Fig. 10. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic." width="100%" />
-<p class="caption">Fig. 10. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic.</p>
+<img src="Fig11.png" alt="Fig. 11. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic." width="100%" />
+<p class="caption">Fig. 11. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic.</p>
 </div>
 
