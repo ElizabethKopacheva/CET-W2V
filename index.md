@@ -233,6 +233,9 @@ text= text.str.replace('@\S+', '', case=False)
 # remove additional links
 text= text.str.replace('bit\.ly\S+', '', case=False)
 
+# adding a new column to the df
+data['clean_text']=text
+
 # run sentiment analysis with VADER 
 analyzer = SentimentIntensityAnalyzer()
 vs_res=[]
@@ -424,7 +427,10 @@ grid_try[which(res$f==max(res$f)),]
 # In this case those are -0.092 and 0.1284
 
 # Adding the column with the VADER category to the main dataset
-data<-data %>% mutate(vader_group =
+data_vader<-read.csv("texts_with_sentiment_scores.csv",header=T,encoding="UTF-8")%>%
+               select("doc_id","vader_score","clean_text")
+data<-data %>% left_join(.,data_vader) %>%
+               mutate(vader_group =
                         case_when(vader_score < -0.092 ~ "neg", 
                                   vader_score <= 0.1284 ~ "neu",
                                   vader_score > 0.1284 ~ "pos"))
