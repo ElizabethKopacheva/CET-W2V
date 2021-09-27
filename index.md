@@ -1050,83 +1050,231 @@ The following graph shows for how many months each of those users was involved i
 <p class="caption">Fig. 9. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions</p>
 </div>
 
-### The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between the  users  expressing  negative  and neutral or positive views
+### The  proportion  of  the  homophilic relationships
 
 
 ```r
 # The following block of code shows how to calculate and visualize 
 # the  proportion  of  the  connections  between  the  users  
-# expressing negative views to the number of connections between the  
-# users  expressing  negative  and neutral or positive views
+# expressing simmilar view
 
-# Loading the needed variables
-dat<-data[, c("user_id", "reply_to_user_id","mentions_user_id",
-              "created_at","pos_neg" )]
-# Loading the edges user_id - reply_user_id (edge between a user 
-# and that user to whom one replies)
-edges<-data[, c("user_id", "reply_to_user_id","created_at")]
-names(edges)[2]<-"user2_id" # changing the column name
-# Loading the edges user_id - mentions_user_id (edge between a user 
-# and that user whom one mentions)
-edges2<-unnest(dat,"mentions_user_id")
-edges2<-edges2[,c("user_id", "mentions_user_id","created_at")]
-names(edges2)[2]<-"user2_id" # changing the column name
+# Get sentiments of nodes in a given month
+# Including neutral tweets
+node_sent<-data%>%
+  select(user_id, month, vader_group) %>%
+  count(user_id,month,vader_group) %>%
+  group_by(user_id,month) %>%
+  mutate(sent = vader_group[n == max(n)][1])%>%
+  select(user_id,month,sent)
 
-# Binding two edge dfs and keeping only the unique values
-edges<-rbind(edges,edges2)
-edges<-unique(edges)
+# If the user, was not active this month, we can set up the sentiment 
+# of the user as it was at the previous month
+node_sent_all_months<-expand.grid(unique(data$user_id),
+                                  unique(data$month))%>%
+                      rename(user_id=Var1,month=Var2)%>%
+                      arrange(desc(month))%>%
+  left_join(.,node_sent[,c("user_id","month","sent")])%>%
+  left_join(.,unique(data[,c("user_id","dyn_cluster")]))%>%
+  arrange(user_id)%>%
+  group_by(user_id)%>%
+  fill(sent, .direction = "downup")%>%
+  ungroup()
 
+# Adding the sentiments to the edge-list
+names(node_sent_all_months)<-c("from","month","sent1","dc1")
+edges<-active_edgelists%>%left_join(.,node_sent_all_months)
+names(node_sent_all_months)<-c("to","month","sent2","dc2")
+edges<-left_join(edges,node_sent_all_months)
 
-# Creating a new object that contains users' sentiments
-user_sent<-data[, c("user_id", "created_at","pos_neg" )]
-# Creating a new month variable
-user_sent$month<- floor_date(user_sent$created_at, "month")
-# Changing the values of the sentiment categories
-user_sent$pos_neg<-ifelse(user_sent$pos_neg==1,-1,user_sent$pos_neg)
-user_sent$pos_neg<-ifelse(user_sent$pos_neg==2,1,user_sent$pos_neg)
-# Grouping by the month and taking the mean sentiment
-user_sent<-user_sent %>% group_by(month,user_id) %>% 
-  dplyr::summarise(mean=mean(pos_neg))
-# If the mean <0, then the sentiment is negative
-user_sent$mean<-ifelse(user_sent$mean<0,-1,user_sent$mean)
-# Otherwise positive
-user_sent$mean<-ifelse(user_sent$mean>0,1,user_sent$mean)
+# Calculating the proportion of the homophilic relationships
+vis_net<-edges%>%select(sent1,sent2,month)%>%na.omit()%>%
+  group_by(month) %>%
+  mutate(all = n())%>%
+  ungroup()%>%
+  filter(sent1==sent2)%>%
+  group_by(month,all)%>%
+  mutate(homo=n())%>%mutate(prop=homo/all)%>%
+  select(month,prop)%>%unique()%>%
+  mutate(category="Including neutral tweets")
 
-# Creating a new month variable in the edges df
-edges$month<-floor_date(edges$created_at, "month")
-# Merging edges df and user_sent df to get the values for 
-# the mean sentiment of a user in a given month
-edges<-left_join(edges,user_sent)
-# Changing the names of the columns in user_sent df to set the  
-# sentiment values for the second user, to whom the first one replies 
-# or whom mentions 
-names(user_sent)[2:3]<-c("user2_id","mean2")
-# Merging 
-edges<-left_join(edges,user_sent)
-edges<-na.omit(edges) # dropping NAs
+# Taking the same steps but excluding neutral tweets
+node_sent<-data%>%
+  select(user_id, month, vader_group) %>%
+  filter(vader_group!="neu")%>%
+  count(user_id,month,vader_group) %>%
+  group_by(user_id,month) %>%
+  mutate(sent = vader_group[n == max(n)][1])%>%
+  select(user_id,month,sent)
 
-# If two users have a same negative sentiment, then same_clust 
-# variable equals 1
-edges$same_clust<-ifelse(edges$mean==-1&edges$mean2==-1,1,0)
-# If one user has a negative sentiment and the other one other 
-# sentiment diff_clust variable equals 1
-edges$diff_clust<-ifelse((edges$mean==-1&edges$mean2!=-1)|
-                           (edges$mean!=-1&edges$mean2==-1),1,0)
+node_sent_all_months<-expand.grid(unique(data$user_id),
+                                  unique(data$month))%>%
+  rename(user_id=Var1,month=Var2)%>%
+  arrange(desc(month))%>%
+  left_join(.,node_sent[,c("user_id","month","sent")])%>%
+  left_join(.,unique(data[,c("user_id","dyn_cluster")]))%>%
+  arrange(user_id)%>%
+  group_by(user_id)%>%
+  fill(sent, .direction = "downup")%>%
+  ungroup()
 
-# Calculating the number of edges in both groups
-edges<-edges %>% group_by(month) %>% 
-    dplyr::summarise(sum_sim=sum(same_clust),
-    sum_diff=sum(diff_clust))
-# Dividing the number of same_clust edges by the number of 
-# diff_clust edges
-edges$prop<-edges$sum_sim/edges$sum_diff
+names(node_sent_all_months)<-c("from","month","sent1","dc1")
+edges<-active_edgelists%>%left_join(.,node_sent_all_months)
+names(node_sent_all_months)<-c("to","month","sent2","dc2")
+edges<-left_join(edges,node_sent_all_months)
 
+vis_net2<-edges%>%select(sent1,sent2,month)%>%na.omit()%>%
+  group_by(month) %>%
+  mutate(all = n())%>%
+  ungroup()%>%
+  filter(sent1==sent2)%>%
+  group_by(month,all)%>%
+  mutate(homo=n())%>%mutate(prop=homo/all)%>%
+  select(month,prop)%>%unique()%>%
+  mutate(category="Excluding neutral tweets")%>%
+  rbind(.,vis_net)%>%
+  mutate(category=as.factor(category),
+                      month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
-my_colors = c("#E0ECF4","#BFD3E6","#9EBCDA","#8C96C6","#8C6BB1",
-              "#88419D","#810F7C","#4D004B")
-clplot(x=decimal_date(edges$month), y=edges$prop, lwd=3, 
-       levels=c(5,10,15,20,25,30,35), col=my_colors, showcuts=T , 
-       bty="n",xlab="",ylab=expression(y[3]))
+# Visualising
+mycolors=c("#b4de2c","#4d004b")
+p1<-ggplot(vis_net2, 
+           aes(x=month,y=prop,group=category,
+               colour = category,fill=category))+
+  geom_line(lwd=1.5)+
+  geom_point(size = 2) +
+  geom_smooth(method = "loess", alpha=0.3)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "top",
+        legend.title = element_blank(),
+        axis.text = element_text(size=20),
+        legend.text = element_text(size = 24),
+        axis.title = element_text(size = 24),
+        strip.text = element_text(size = 24),
+        plot.title = element_text(size = 28))+
+  scale_color_manual(values=mycolors)+
+  scale_fill_manual(values=mycolors)+
+  ylab(expression(y[1]))+xlab("")+
+  ggtitle("Proportion of the homophilic relationships")+
+  ggeasy::easy_center_title()+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+
+# Proportion of the communities with the majority of the connections
+# being homophilic
+# Similar calculations take place here
+node_sent<-data%>%
+  select(user_id, month, vader_group) %>%
+  count(user_id,month,vader_group) %>%
+  group_by(user_id,month) %>%
+  mutate(sent = vader_group[n == max(n)][1])%>%
+  select(user_id,month,sent)
+
+node_sent_all_months<-expand.grid(unique(data$user_id),
+                                  unique(data$month))%>%
+  rename(user_id=Var1,month=Var2)%>%
+  arrange(desc(month))%>%
+  left_join(.,node_sent[,c("user_id","month","sent")])%>%
+  left_join(.,unique(data[,c("user_id","dyn_cluster")]))%>%
+  arrange(user_id)%>%
+  group_by(user_id)%>%
+  fill(sent, .direction = "downup")%>%
+  ungroup()
+
+# Adding the sentiments to the edge-list
+names(node_sent_all_months)<-c("from","month","sent1","dc1")
+edges<-active_edgelists%>%left_join(.,node_sent_all_months)
+names(node_sent_all_months)<-c("to","month","sent2","dc2")
+edges<-left_join(edges,node_sent_all_months)%>%
+  filter(dc1==dc2,is.na(dc1)==F)
+
+vis_gr<-edges%>%select(sent1,sent2,month,dc1)%>%na.omit()%>%
+  group_by(month,dc1) %>%
+  mutate(all = n())%>%
+  ungroup()%>%
+  filter(sent1==sent2)%>%
+  group_by(month,dc1,all)%>%
+  mutate(homo=n())%>%mutate(prop=homo/all)%>%
+  select(month,prop,dc1)%>%unique()
+
+vis_gr<-vis_gr%>%
+  group_by(month)%>%
+  mutate(n_gr=n())%>%
+  ungroup()%>%
+  filter(prop>0.5)%>%
+  group_by(month)%>%
+  mutate(homo_com_n=n())%>%
+  mutate(prop2=homo_com_n/n_gr)%>%select(month,prop2)%>%unique()%>%
+  mutate(category="Including neutral tweets")
+
+# Excluding neutral tweets  
+node_sent<-data%>%
+  select(user_id, month, vader_group) %>%
+  filter(vader_group!="neu")%>%
+  count(user_id,month,vader_group) %>%
+  group_by(user_id,month) %>%
+  mutate(sent = vader_group[n == max(n)][1])%>%
+  select(user_id,month,sent)
+
+node_sent_all_months<-expand.grid(unique(data$user_id),
+                                  unique(data$month))%>%
+  rename(user_id=Var1,month=Var2)%>%
+  arrange(desc(month))%>%
+  left_join(.,node_sent[,c("user_id","month","sent")])%>%
+  left_join(.,unique(data[,c("user_id","dyn_cluster")]))%>%
+  arrange(user_id)%>%
+  group_by(user_id)%>%
+  fill(sent, .direction = "downup")%>%
+  ungroup()
+
+# Adding the sentiments to the edge-list
+names(node_sent_all_months)<-c("from","month","sent1","dc1")
+edges<-active_edgelists%>%left_join(.,node_sent_all_months)
+names(node_sent_all_months)<-c("to","month","sent2","dc2")
+edges<-left_join(edges,node_sent_all_months)%>%
+  filter(dc1==dc2,is.na(dc1)==F)
+
+vis_gr2<-edges%>%select(sent1,sent2,month,dc1)%>%na.omit()%>%
+  group_by(month,dc1) %>%
+  mutate(all = n())%>%
+  ungroup()%>%
+  filter(sent1==sent2)%>%
+  group_by(month,dc1,all)%>%
+  mutate(homo=n())%>%mutate(prop=homo/all)%>%
+  select(month,prop,dc1)%>%unique()
+
+vis_gr2<-vis_gr2%>%
+  group_by(month)%>%
+  mutate(n_gr=n())%>%
+  ungroup()%>%
+  filter(prop>0.5)%>%
+  group_by(month)%>%
+  mutate(homo_com_n=n())%>%
+  mutate(prop2=homo_com_n/n_gr)%>%select(month,prop2)%>%unique()%>%
+  mutate(category="Excluding neutral tweets")%>%rbind(.,vis_gr)%>%
+  mutate(category=as.factor(category),
+         month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
+
+p2<-ggplot(vis_gr2, 
+           aes(x=month,y=prop2,group=category,
+               colour = category,fill=category))+
+  geom_line(lwd=1.5)+
+  geom_point(size = 2) +
+  geom_smooth(method = "loess", alpha=0.3)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "top",
+        legend.title = element_blank(),
+        axis.text = element_text(size=20),
+        legend.text = element_text(size = 24),
+        axis.title = element_text(size = 24),
+        strip.text = element_text(size = 24),
+        plot.title = element_text(size = 28))+
+  scale_color_manual(values=mycolors)+
+  scale_fill_manual(values=mycolors)+
+  ylab(expression(y[2]))+xlab("")+
+  ggtitle("Proportion of the communities with the majority of the relationships being homophilic")+
+  ggeasy::easy_center_title()+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+
+ggarrange(p1,p2,nrow=2)
 ```
 
 
@@ -1136,89 +1284,3 @@ The following graph shows that users expressing negative views prefer to stay in
 <p class="caption">Fig. 10. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views.</p>
 </div>
 
-### Robustness test
-
-As a robustness test, we applied multiple change point analysis to distinguish specific dates associated with sentiment value shifts in the time series.  
-
-```r
-# Conducting multiple change point analysis
-
-# Loading the package
-# install.packages("ecp",dependencies=T)
-library(ecp)
-
-# Subsetting the needed variables
-vis6<-data[,c("created_at","pos_neg","sent_scaled")]
-
-# Creating a new month variable 
-vis6$month<-floor_date(vis6$created_at, "month")
-
-# Changing the values of sentiments
-vis6$neg<-ifelse(vis6$pos_neg==2,0,vis6$pos_neg)
-vis6$pos<-ifelse(vis6$pos_neg==1,0,vis6$pos_neg)
-vis6$pos<-ifelse(vis6$pos==2,1,vis6$pos)
-
-# Summarizing by month
-vis6<-vis6 %>% 
-  select (month, sent_scaled,neg, pos)%>% 
-  group_by(month) %>% 
-  dplyr::summarise(sd=sd(sent_scaled,na.rm = T),
-                   neg=mean(neg,na.rm = T),
-                   pos=mean(pos,na.rm = T))
-
-# We want to scale all the values for vizualisation purposes
-range_fun <- function(x){(x-min(x))/(max(x)-min(x))}
-for (i in 2:length(names(vis6))){
-  vis6[,i]<-range_fun(vis6[,i])
-}
-
-# Applying multiple change point analysis
-vis_ecp <- e.divisive (as.matrix(vis6[,-1]), min.size = 2) 
-
-# Now we can visualize the results 
-# creating 4 new objects storing the dates of the change points
-dat1<-vis6$month[which(vis_ecp$cluster=="2")[[1]]]
-dat2<-vis6$month[which(vis_ecp$cluster=="3")[[1]]]
-dat3<-vis6$month[which(vis_ecp$cluster=="4")[[1]]]
-dat4<-vis6$month[which(vis_ecp$cluster=="5")[[1]]]
-
-# Renaming the variables
-names(vis6)[2:length(names(vis6))]<-c("SD of the sentiment values",
-                                    "% of negative tweets",
-                                    "% of positive tweets")
-# Reshaping the data
-mdata <- melt(vis6, id=c("month"))
-
-# Visualizing 
-ggplot(mdata,aes(x=month,y=value,col=variable,fill=variable))+
-  geom_smooth(alpha=0.7)+ # adding the lines showing the values
-  scale_color_viridis(discrete = T, option = "D")+ 
-  # changing the colors
-  scale_fill_viridis(discrete = T, option = "D")+
-  theme(panel.background = element_rect(fill = NA),legend.position="top",
-        legend.title=element_blank(),
-        text = element_text(size=20))+
-  ylab("Value")+xlab("")+
-  # adding vertical lines for the identified time periods
-  geom_vline(aes(xintercept = dat1),col="#440154FF",linetype="dotted")+
-  geom_vline(aes(xintercept = dat2),col="#440154FF",linetype="dotted")+
-  geom_vline(aes(xintercept = dat3),col="#440154FF",linetype="dotted")+
-  geom_vline(aes(xintercept = dat4),col="#440154FF",linetype="dotted")+
-  geom_text(aes(x=dat1,y=0.15),size=7,
-            family="serif",fontface="plain",
-            label=format(dat1,"%b %Y"),col="#404788FF",hjust =-0.05)+
-  geom_text(aes(x=dat2,y=0.19),size=7,
-            family="serif",fontface="plain",color="#404788FF",
-            label=format(dat2,"%b %Y"),hjust =-0.05)+
-  geom_text(aes(x=dat3,y=0.28),size=7,
-            family="serif",fontface="plain",color="#404788FF",
-            label=format(dat3,"%b %Y"),hjust =-0.05)+
-  geom_text(aes(x=dat4,y=0.58),size=7,
-            family="serif",fontface="plain",color="#404788FF",
-            label=format(dat4,"%b %Y"),hjust =-0.05)
-```
-
-<div class="figure">
-<img src="Fig10.png" alt="Fig. 11. Change-points of the sentiment values found in respect to the time-periods." width="100%" />
-<p class="caption">Fig. 11. Change-points of the sentiment values found in respect to the time periods.</p>
-</div>
