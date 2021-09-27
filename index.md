@@ -210,7 +210,7 @@ import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # load the texts
-data = pd.read_excel('tweet_texts.csv')
+data = pd.read_csv('tweet_texts.csv')
 
 # preprocess texts (remove urls, mentions and e-mail addresses, as well as html markup)
 text = data["text"].astype(str) 
