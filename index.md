@@ -781,10 +781,13 @@ p4<- ggplot(vis4, aes(x=vader_score,
 
 ggarrange(p1,p2,p3,p4,nrow=2,ncol=2)
 ```
+
 <div class="figure">
 <img src="Fig7.png" alt="Fig. 7. Sentiment distributions during the key periods." width="100%" />
 <p class="caption">Fig. 7. Sentiment distributions during the key periods.</p>
 </div>
+
+
 ### Hartigan’s dip test of unimodality
 
 ```r
