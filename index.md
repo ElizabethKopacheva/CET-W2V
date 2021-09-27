@@ -528,23 +528,18 @@ library(streamgraph) # for visualization
 library(lubridate) # for grouping by date
 
 # Loading needed variables from the df
-vis1<-data[,c("user_id","created_at","dyn_cluster")] 
-
-# Creating a new variable month
-vis1$month<- floor_date(vis1$created_at, "month")
-
-# Visualizing only those users that are in the dynamic communities
-vis1<-vis1[which(!is.na(vis1$dyn_cluster)),]
-
-# Dropping the date
-vis1<-vis1[,c("user_id","month","dyn_cluster")]
-
-# To calculate the number of users, we need to drop duplicated rows
-vis1<-unique(vis1)
-
-# Counting the number of users within each dynamic cluster 
-# in each time period
-vis1<-vis1 %>% group_by(month,dyn_cluster) %>% 
+vis1<-data[,c("user_id","created_at","dyn_cluster")] %>%
+  # Creating a new variable month  
+  mutate(month=floor_date(created_at, "month"))%>%
+  # Visualizing only those users that are in the dynamic communities  
+  filter(!is.na(dyn_cluster))%>%
+  # Dropping the date
+  select(user_id,month,dyn_cluster)%>%
+  # To calculate the number of users, we need to drop duplicated rows
+  unique()%>%
+  # Counting the number of users within each dynamic cluster 
+  # in each time period
+  group_by(month,dyn_cluster) %>% 
   dplyr::summarise(num_of_u=n())
 
 # Building the graph
@@ -552,20 +547,19 @@ vis1%>%
   streamgraph("dyn_cluster", "num_of_u", "month",interactive=F)%>%
   sg_axis_x(tick_interval=12,"month","%Y")%>%
   sg_add_marker(x=as.Date("2015-09-01",format="%Y-%m-%d"),
-                color="black",stroke="#FD8D3C",
-  label="Alan Kurdi's death and 'Refugees Welcome' demonstrations") 
-%>%
+                color="black",stroke="#3f007d",
+                label="Alan Kurdi's death and 'Refugees Welcome' demonstrations")%>%
   sg_add_marker(x=as.Date("2015-11-01",format="%Y-%m-%d"),
-                color="black",stroke="#FD8D3C",
+                color="black",stroke="#3f007d",
                 label="Border checks introduced", y=90) %>%
   sg_add_marker(x=as.Date("2016-01-01",format="%Y-%m-%d"),
-                color="black",stroke="#FD8D3C",
+                color="black",stroke="#3f007d",
                 label="Border checks come into force",y=180) %>%
   sg_add_marker(x=as.Date("2016-06-01",format="%Y-%m-%d"),
-                color="black",stroke="#FD8D3C",
+                color="black",stroke="#3f007d",
                 label="Change in the Reception of Asylum Seekers Act",
-                y=120) %>%
-  sg_fill_brewer("Oranges")
+                y=140) %>%
+  sg_fill_brewer("BuPu")
 ```
 
 <div class="figure">
@@ -574,7 +568,7 @@ vis1%>%
 </div>
 
 
-### Proportion  difference  between  the  number  of  negative  and  positive tweets
+### Number of positive, negative and neutral tweets over time
 
 
 ```r
