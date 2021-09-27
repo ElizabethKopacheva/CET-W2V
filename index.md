@@ -617,67 +617,49 @@ ggplot(vis2, aes(x=month,y=value,color=variable,fill=variable)) +
 <p class="caption">Fig. 4. Proportion of the tweets of a specific sentiment.</p>
 </div>
 
-### Overall sentiment value difference over time 
+### Standard deviation and the mean of the sentiment values over time (in the whole network)
 
 ```r
 # The following block of code shows how to visualize the 
 # mean and standard deviation of sentiment values over time
 
-# Installing the needed packages
-#install.packages(c("ggplot2","ggpubr"),dependencies = T)
-
-# Loading the needed variables
-vis3<-data[,c("doc_id","created_at","sent_scaled")]
-# Creating a variable month
-vis3$month<- floor_date(vis3$created_at, "month")
-# Calculating the mean and standard deviation of the sentiment values for 
-# each time period
-vis3<-vis3 %>%
-  group_by(month) %>% 
-  dplyr::summarise(sd=sd(sent_scaled,na.rm = T), mean =mean(sent_scaled,na.rm = T))
-
-vis3$month <- as.POSIXct(vis3$month)
-
-# Loading the package
-library(ggplot2)
-ggplot()+geom_smooth(vis3,mapping=aes(month,sd),
-                     na.rm=T,color="#440154FF",
-                     fill=alpha("#440154FF",0.1),
-                     size=1)+
-  theme(panel.background = element_rect(fill = NA),
-        legend.position = "none")+
-  ylab("SD of the sentiment values")+xlab("")
-  
- 
+# Reshaping the df for the visualisation purposes
+vis3<-data%>%
+  group_by(month)%>%
+  summarise(sd=sd(vader_score,na.rm=T),
+            mean=mean(vader_score,na.rm=T))%>%
+  melt(., id.vars=c("month"))%>%
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
 # SD plot
-sd<- ggplot(vis3, aes(x = month, y = sd)) + geom_point(size = 0.5) +
-  geom_line(color = "#636363")+
-  geom_smooth(method = "loess", color = "#cc4c02", fill = "lightgrey")+
-  labs(y="Standard deviation of sentiment values", x="Month, year")+
-  scale_x_datetime(date_breaks = "4 months", date_labels="%m-%Y")+
-  theme(axis.text.x = element_text(angle = 90, vjust=0.5), 
-        panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
+p1<-ggplot(vis3[which(vis3$variable=="sd"),], aes(x=month,y=value)) +
+  geom_point(size = 2,color="#4d004b") + # adding the points
+  geom_line(color="#4d004b",lwd=1.5)+ # adding the line connecting the points
+  geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
+  # adding the regression line
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title=element_text(size=20))+
+  ylab("SD of sentiment values")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
 
 # Mean plot
-mean<- ggplot(vis3, aes(x = month, y = mean)) + geom_point(size = 0.5) +
-  geom_line(color = "#636363")+
-  geom_smooth(method = "loess",color = "#cc4c02", fill = "lightgrey")+
-  labs(y="Mean of sentiment values", x="Month, year")+
-  scale_x_datetime(date_breaks = "4 months", date_labels="%m-%Y")+
-  theme(axis.text.x = element_text(angle = 90, vjust=0.5), 
-        panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
+p2<-ggplot(vis3[which(vis3$variable=="mean"),], aes(x=month,y=value)) +
+  geom_point(size = 2,color="#4d004b") +
+  geom_line(color="#4d004b",lwd=1.5)+
+  geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title=element_text(size=20))+
+  ylab("Mean of sentiment values")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
 
-library(ggpubr)
-ggarrange(meean,sd,  ncol = 1, nrow = 2, heights = c(10, 10))
+# Producing the plots
+ggarrange(p1,p2,nrow=2)
 
 ```
 <div class="figure">
