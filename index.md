@@ -499,21 +499,12 @@ fightin_words_plot(top_features,
 
 The following graph shows the terms most likely to be associated with positive and negative tweets
 <div class="figure">
-<img src="Fig2.png" alt="Fig. 2. Terms most likely associated with negative and positive tweets" width="60%" />
-<p class="caption">Fig. 2. Terms most likely associated with negative and positive tweets</p>
+<img src="Fig2.png" alt="Fig. 3. Terms most likely associated with negative and positive tweets" width="60%" />
+<p class="caption">Fig. 3. Terms most likely associated with negative and positive tweets</p>
 </div>
 
 
 ## Analysing the results
-
-After tweets were divided into positive, negative and neutral categories, the following statistics were received: 
-1. Number of active users in each of the dynamic clusters;
-2. The proportion  difference  between  the  number  of  negative  and  positive tweets;
-3. Overall sentiment value difference over time;
-4. Sentiment value difference for the biggest dynamic clusters over time;
-5. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views;
-6. If users had a positive opinion on the matter of migration and later changed it to the negative opinion;
-7. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between the  users  expressing  negative  and neutral or positive views;
 
 ### Statistics on the number of active users in each of the dynamic clusters
 
@@ -667,82 +658,6 @@ ggarrange(p1,p2,nrow=2)
 <p class="caption">Fig. 5. Mean and standard deviation of the overall sentiment values.</p>
 </div>
 
-### Hartigan’s dip test of unimodality
-
-```r
-# Installing the needed packages
-#install.packages("diptest")
-library(diptest)
-
-# Loading the needed variables
-dip_test<-data[,c("doc_id","created_at","sent_scaled")]
-# Creating a variable month
-dip_test$month<- floor_date(dip_test$created_at, "month")
-# Ordering the df
-dip_test <-dip_test [order(dip_test$month, decreasing = F),]
-
-# Examining the results of the dip test
-for (i in (1:length(unique(dip_test$month))))
-{
-  print(dip.test(dip_test$sent_scaled [dip_test$month == unique(dip_test$month)[i]]))
- }
-
-# Density plots for the key periods
-
-jan2012<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[1],], aes(x=sent_scaled)) + 
-  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
-  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
-  ylim(0, 11)+
-  labs(title = "January 2012  (n = 1)", y="Density", x="Scaled sentiment values")+
-  theme(panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
-
-
-dec2015<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[48],], aes(x=sent_scaled)) + 
-  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
-  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
-  ylim(0, 11)+
-  labs(title = "December 2015 (n = 48)", y="Density", x="Scaled sentiment values")+
-  theme(panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
-
-
-oct2017<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[70],], aes(x=sent_scaled)) + 
-  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
-  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
-  ylim(0, 11)+
-  labs(title = "October 2017  (n = 70)", y="Density", x="Scaled sentiment values")+
-  theme(panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
-
-
-dec2019<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[96],], aes(x=sent_scaled)) + 
-  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
-  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
-  ylim(0, 11)+
-  labs(title = "December 2019  (n = 96)", y="Density", x="Scaled sentiment values")+
-  theme(panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
-
-ggarrange(jan2012, dec2015, oct2017, dec2019, ncol = 2, nrow = 2)
-
-```
-<div class="figure">
-<img src="Fig11.png" alt="Fig. 6. Sentiment distributions during the key periods." width="100%" />
-<p class="caption">Fig. 6. Sentiment distributions during the key periods.</p>
-</div>
 
 ### Distribution of the sentiment values during the key periods (both in the network and its communities)
 
@@ -867,10 +782,85 @@ p4<- ggplot(vis4, aes(x=vader_score,
 ggarrange(p1,p2,p3,p4,nrow=2,ncol=2)
 ```
 <div class="figure">
-<img src="Fig6.png" alt="Fig. 7. Sentiment value difference for the biggest dynamic clusters over time." width="100%" />
-<p class="caption">Fig. 7. Sentiment value difference for the biggest dynamic clusters over time.</p>
+<img src="Fig6.png" alt="Fig. 7. Sentiment distributions during the key periods." width="100%" />
+<p class="caption">Fig. 7. Sentiment distributions during the key periods.</p>
 </div>
+### Hartigan’s dip test of unimodality
 
+```r
+# Installing the needed packages
+#install.packages("diptest")
+library(diptest)
+
+# Loading the needed variables
+dip_test<-data[,c("doc_id","created_at","sent_scaled")]
+# Creating a variable month
+dip_test$month<- floor_date(dip_test$created_at, "month")
+# Ordering the df
+dip_test <-dip_test [order(dip_test$month, decreasing = F),]
+
+# Examining the results of the dip test
+for (i in (1:length(unique(dip_test$month))))
+{
+  print(dip.test(dip_test$sent_scaled [dip_test$month == unique(dip_test$month)[i]]))
+ }
+
+# Density plots for the key periods
+
+jan2012<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[1],], aes(x=sent_scaled)) + 
+  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
+  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
+  ylim(0, 11)+
+  labs(title = "January 2012  (n = 1)", y="Density", x="Scaled sentiment values")+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+
+dec2015<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[48],], aes(x=sent_scaled)) + 
+  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
+  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
+  ylim(0, 11)+
+  labs(title = "December 2015 (n = 48)", y="Density", x="Scaled sentiment values")+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+
+oct2017<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[70],], aes(x=sent_scaled)) + 
+  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
+  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
+  ylim(0, 11)+
+  labs(title = "October 2017  (n = 70)", y="Density", x="Scaled sentiment values")+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+
+dec2019<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[96],], aes(x=sent_scaled)) + 
+  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
+  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
+  ylim(0, 11)+
+  labs(title = "December 2019  (n = 96)", y="Density", x="Scaled sentiment values")+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
+        panel.background = element_rect(fill = NA),
+        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
+        axis.line.y = element_line(colour = "black", size=0.8))
+
+ggarrange(jan2012, dec2015, oct2017, dec2019, ncol = 2, nrow = 2)
+
+```
+<div class="figure">
+<img src="Fig11.png" alt="Fig. 6. Sentiment distributions during the key periods." width="100%" />
+<p class="caption">Fig. 6. Sentiment distributions during the key periods.</p>
+</div>
 ### Mean and SD of the sentiment values in the 10 biggest communities
 
 
@@ -947,107 +937,8 @@ p3<-ggplot(vis5, aes(x=month,y=proportion,color=dyn_cluster)) +
 ggarrange(p1,p2,p3,nrow=3)
 ```
 <div class="figure">
-<img src="Fig7.png" alt="Fig. 8. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views." width="100%" />
-<p class="caption">Fig. 8. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views.</p>
-</div>
-
-### Number of users who had a positive opinion on the matter of migration and later changed it to the negative opinion
-
-
-```r
-# The following block of code shows how to calculate and visualize
-# the number of users who had a positive opinion on the matter of 
-# migration and later changed it to the negative opinion
-
-# Subsetting the needed variables
-vis5<-data[,c("user_id","created_at","pos_neg","dyn_cluster")]
-# Creating a new month variable 
-vis5$month<-floor_date(vis5$created_at, "month")
-# Calculating the mean sentiment of a user in a month
-# Changing the values of sentiments
-vis5$pos_neg<-ifelse(vis5$pos_neg==1,-1,vis5$pos_neg)
-vis5$pos_neg<-ifelse(vis5$pos_neg==2,1,vis5$pos_neg)
-
-vis5<-vis5%>%group_by(month,user_id,dyn_cluster) %>% 
-  dplyr::summarise(mean=mean(pos_neg))
-
-# If the mean <0, then the sentiment is negative
-vis5$mean<-ifelse(vis5$mean<0,-1,vis5$mean)
-# Otherwise positive
-vis5$mean<-ifelse(vis5$mean>0,1,vis5$mean)
-
-# We are interested in users of the dynamic communities
-# who had a positive opinion at the beginning
-# and changed it to the negative later
-
-# Looking for users who had a positive opinion
-users<-unique(vis5$user_id[vis5$mean==1&!is.na(vis5$dyn_cluster)])
-
-# Subsetting the vis5 object keeping only those users
-vis5<-vis5[which(vis5$user_id %in% users),]
-
-# Finding when users started to participate in the discussions
-start<-vis5 %>% group_by(user_id) %>% 
-  dplyr::summarise(month=min(month))
-start<-left_join(start,vis5[,c("user_id","month","mean")])
-# Keeping only those who had a positive sentiment at the beginning 
-start<-start[which(start$mean==1),]
-
-# Subsetting the vis5 object
-vis5<-vis5[which(vis5$user_id %in% start$user_id),]
-
-# Finding which users changed their opinion to negative
-users<-unique(vis5$user_id[vis5$mean==-1])
-
-# Subsetting the vis5 object keeping only those users
-vis5<-vis5[which(vis5$user_id %in% users),]
-
-# Finding when users participated the last time
-end<-vis5 %>% group_by(user_id) %>% dplyr::summarise(month=max(month))
-end<-left_join(end,vis5[,c("user_id","month","mean")])
-# Keeping only those who had a negative sentiment at the end 
-end<-end[which(end$mean==-1),]
-
-# Subsetting the vis5 object keeping only those users
-vis5<-vis5[which(vis5$user_id %in% end$user_id),]
-
-# Calculating how long each of those users participated at 
-# the discussions
-vis5<-vis5 %>% group_by(user_id) %>% 
-  dplyr::summarise(begin=min(month),end=max(month))
-
-# Calculating the number of months between the end date and 
-# the begin date
-month_diff <- function(end_date, start_date) {
-    ed <- as.POSIXlt(end_date)
-    sd <- as.POSIXlt(start_date)
-    12 * (ed$year - sd$year) + (ed$mon - sd$mon)
-}
-vis5$month_diff<-month_diff(vis5$end,vis5$begin)
-
-# Calculating how many users changed opinion within the 
-# number of months
-vis5<-vis5%>%group_by(month_diff)%>%dplyr::summarise(count=n())
-
-# Visualising 
-vis5<-vis5[order(-vis5$month_diff),]
-vis5$month_diff<-as.character(vis5$month_diff)
-vis5$month_diff<- factor(vis5$month_diff, levels = vis5$month_diff)
-ggplot(vis5,mapping=aes(x=month_diff,y=count,
-                        color=count,fill=count))+
-  geom_bar(stat="identity",width = 0.5)+
-  theme(panel.background = element_rect(fill = NA),
-        legend.position = "none")+
-  scale_color_viridis(option = "D")+
-  scale_fill_viridis(option = "D")+
-  ylab("N of users")+xlab("N of months")+coord_flip()
-```
-
-Only 16 users changed their opinion from positive to negative when getting involved into discussions with other users.
-The following graph shows for how many months each of those users was involved into the discussions.
-<div class="figure">
-<img src="Fig8.png" alt="Fig. 9. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions" width="100%" />
-<p class="caption">Fig. 9. Number of users that changed their opinion from positive to negative. Y axis shows how many months those users participated in discussions</p>
+<img src="Fig7.png" alt="Fig. 8. Mean and standard deviation of sentiment values in the biggest dynamic communities." width="100%" />
+<p class="caption">Fig. 8. Mean and standard deviation of sentiment values in the biggest dynamic communities.</p>
 </div>
 
 ### The  proportion  of  the  homophilic relationships
@@ -1277,10 +1168,8 @@ p2<-ggplot(vis_gr2,
 ggarrange(p1,p2,nrow=2)
 ```
 
-
-The following graph shows that users expressing negative views prefer to stay in contact with the users of the same views.
 <div class="figure">
-<img src="Fig9.png" alt="Fig. 10. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views." width="100%" />
-<p class="caption">Fig. 10. The  proportion  of  the  connections  between  the  users  expressing negative views to the number of connections between  the  users  expressing  negative and other (than negative) views.</p>
+<img src="Fig9.png" alt="Fig. 10. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic." width="100%" />
+<p class="caption">Fig. 10. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic.</p>
 </div>
 
