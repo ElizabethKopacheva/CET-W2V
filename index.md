@@ -595,7 +595,7 @@ levels(vis2$variable)<-c("Positive","Neutral","Negative")
 mycolors=c("#e1091d","#b4de2c","#1818ee")
 
 # Visualising
-# install.packages("reshape2", dependencies=T)
+# install.packages("ggplot2", dependencies=T)
 library(ggplot2)
 ggplot(vis2, aes(x=month,y=value,color=variable,fill=variable)) + 
   geom_bar(stat="identity")+
