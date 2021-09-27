@@ -871,82 +871,80 @@ ggarrange(p1,p2,p3,p4,nrow=2,ncol=2)
 <p class="caption">Fig. 7. Sentiment value difference for the biggest dynamic clusters over time.</p>
 </div>
 
-### The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views
+### Mean and SD of the sentiment values in the 10 biggest communities
 
 
 ```r
-# The following block of code shows how to visualize the  the proportion  
-# of  the  connections  between  the  users  expressing similar views 
-# (i.e., negative, neutral or positive) to the number of connections 
-#  between the  users  expressing  opposite  views
+# The following block of code shows how to visualize the  the mean and SD
+# of the sentiment values in the biggest communities. Also, for the comparison,
+# the sentiment value per user is calculated.
 
-# Loading the needed variables
-dat<-data[, c("user_id", "reply_to_user_id","mentions_user_id",
-              "created_at","pos_neg" )]
-# Loading the edges user_id - reply_user_id (edge between a user and 
-# that user to whom one replies)
-edges<-data[, c("user_id", "reply_to_user_id","created_at")]
-names(edges)[2]<-"user2_id" # changing the column name
-# Loading the edges user_id - mentions_user_id (edge between a user  
-# and that user whom one mentions)
-edges2<-unnest(dat,"mentions_user_id")
-edges2<-edges2[,c("user_id", "mentions_user_id","created_at")]
-names(edges2)[2]<-"user2_id" # changing the column name
+# Calculating the mean and SD of the sentiment values in big clusters
+vis5<-data%>%filter(dyn_cluster %in% big_com$dyn_cluster)%>%
+  group_by(month,dyn_cluster)%>%
+  summarise(sd=sd(vader_score,na.rm=T),
+            mean=mean(vader_score,na.rm=T))%>%
+  melt(., id.vars=c("month","dyn_cluster"))%>%
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
-# Binding two edge dfs and keeping only the unique values
-edges<-rbind(edges,edges2)
-edges<-unique(edges)
+# Visualising the SD
+p1<-ggplot(vis5[which(vis5$variable=="sd"),], 
+           aes(x=month,y=value,color=dyn_cluster)) +
+  geom_smooth(method = "loess",se=FALSE,lwd=2)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title=element_text(size=24))+
+  scale_color_viridis(discrete = T, option = "D")+
+  scale_fill_viridis(discrete = T, option = "D")+
+  ylab("SD of sentiment values")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
 
+# Visualising the mean
+p2<-ggplot(vis5[which(vis5$variable=="mean"),], 
+           aes(x=month,y=value,color=dyn_cluster)) +
+  geom_smooth(method = "loess",se=FALSE,lwd=2)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title=element_text(size=24))+
+  scale_color_viridis(discrete = T, option = "D")+
+  scale_fill_viridis(discrete = T, option = "D")+
+  ylab("Mean of sentiment values")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
 
-# Creating a new object that contains users' sentiments
-user_sent<-data[, c("user_id", "created_at","pos_neg" )]
-# Creating a new month variable
-user_sent$month<- floor_date(user_sent$created_at, "month")
-# Changing the values of the sentiment categories
-user_sent$pos_neg<-ifelse(user_sent$pos_neg==1,-1,user_sent$pos_neg)
-user_sent$pos_neg<-ifelse(user_sent$pos_neg==2,1,user_sent$pos_neg)
-# Grouping by the month and taking the mean sentiment
-user_sent<-user_sent %>% group_by(month,user_id) %>% 
-  dplyr::summarise(mean=mean(pos_neg))
-# If the mean <0, then the sentiment is negative
-user_sent$mean<-ifelse(user_sent$mean<0,-1,user_sent$mean)
-# Otherwise positive
-user_sent$mean<-ifelse(user_sent$mean>0,1,user_sent$mean)
+# Calculating sentiment per user
+# Sum of the sentiment scores per community in a month
+temp1<-data%>%filter(dyn_cluster %in% big_com$dyn_cluster)%>%
+  group_by(month,dyn_cluster)%>%
+  summarise(sum=sum(vader_score))%>%
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
-# Creating a new month variable in the edges df
-edges$month<-floor_date(edges$created_at, "month")
-# Merging edges df and user_sent df to get the values for the mean 
-# sentiment of a user in a given month
-edges<-left_join(edges,user_sent)
-# Changing the names of the columns in user_sent df to set the  
-# sentiment values for the second user, to whom the first one 
-# replies or whom mentions 
-names(user_sent)[2:3]<-c("user2_id","mean2")
-# Merging 
-edges<-left_join(edges,user_sent)
-edges<-na.omit(edges) # dropping NAs
+# Number of users in each community at a given month
+temp2<-data%>%filter(dyn_cluster %in% big_com$dyn_cluster)%>%
+  select(month,dyn_cluster,user_id)%>%unique()%>%
+  group_by(month,dyn_cluster)%>%
+  summarise(count=n())%>%
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
-# If two users have a same sentiment, then same_clust variable 
-# equals 1
-edges$same_clust<-ifelse(edges$mean==edges$mean2,1,0)
-# If two users have an opposite sentiment, then diff_clust variable 
-# equals 1
-edges$diff_clust<-ifelse(edges$mean!=edges$mean2,1,0)
+# Sentiment per user
+vis5<-left_join(temp1,temp2)%>%mutate(proportion=sum/count)
 
-# Calculating the number of edges in both groups
-edges<-edges %>% group_by(month) %>% 
-     dplyr::summarise(sum_sim=sum(same_clust),
-     sum_diff=sum(diff_clust))
-# Dividing the number of same_clust edges by the number of diff_clust 
-# edges
-edges$prop<-edges$sum_sim/edges$sum_diff
+# Visualising the sentiment per user
+p3<-ggplot(vis5, aes(x=month,y=proportion,color=dyn_cluster)) +
+  geom_smooth(method = "loess",se=FALSE,lwd=2)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title=element_text(size=24))+
+  scale_color_viridis(discrete = T, option = "D")+
+  scale_fill_viridis(discrete = T, option = "D")+
+  ylab("Sentiment value per user")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
 
-
-my_colors = c("#E0ECF4","#BFD3E6","#9EBCDA","#8C96C6",
-              "#8C6BB1","#88419D","#810F7C","#4D004B")
-clplot(x=decimal_date(edges$month), y=edges$prop, lwd=3, 
-       levels=c(5,10,15,20,25,30,35), col=my_colors, 
-       showcuts=T , bty="n",xlab="",ylab=expression(y[2]))
+ggarrange(p1,p2,p3,nrow=3)
 ```
 <div class="figure">
 <img src="Fig7.png" alt="Fig. 8. The  proportion  of  the  connections  between  the  users  expressing similar views (i.e., negative, neutral or positive) to the number of connections between  the  users  expressing  opposite  views." width="100%" />
