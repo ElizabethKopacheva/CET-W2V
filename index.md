@@ -744,63 +744,127 @@ ggarrange(jan2012, dec2015, oct2017, dec2019, ncol = 2, nrow = 2)
 <p class="caption">Fig. 6. Sentiment distributions during the key periods.</p>
 </div>
 
-### Sentiment value difference for the biggest dynamic clusters over time
+### Distribution of the sentiment values during the key periods (both in the network and its communities)
 
 
 ```r
 # The following block of code shows how to visualize 
-# the sentiment value difference for the biggest dynamic 
-# clusters over time
+# the distribution of the sentiment values during the key periods 
 
 # Installing the needed package
-#install.packages("viridis")
+#install.packages(c("viridis","ggeasy"), dependencies = T)
+library(viridis)
+library(ggeasy)
 
-# Loading the needed variables
-vis4<-data[,c("doc_id","created_at","dyn_cluster","sent_scaled")]
-# Creating a variable month
-vis4$month<- floor_date(vis4$created_at, "month")
-# Calculating the standard deviation of the sentiment values 
-# for each dynamic community within each time period
-vis4<-vis4 %>% group_by(month,dyn_cluster) %>% 
-  dplyr::summarise(sd=sd(sent_scaled,na.rm = T))
+# Distribution in the whole network
+vis4<-data%>% filter(month %in% 
+                       c("2012-01","2015-12","2017-10","2019-12")& 
+                       vader_score!=0)
+vis4$group<-as.factor(as.character(vis4$month))
+levels(vis4$group)<-c("January 2012", "December 2015", 
+                      "October 2017", "December 2019")
 
-# Looking for the biggest clusters
-clust_size<-unique(data[,c("user_id","dyn_cluster")]) %>% 
-  group_by(dyn_cluster) %>% 
-  dplyr::summarise(count=n()) %>% 
-  filter(!is.na(dyn_cluster)&count>100)
-
-# Keeping only those clusters that formed from the beginning to the 
-# end of the examined time period
-big_clust<-data[which(data$dyn_cluster %in% clust_size$dyn_cluster),
-         c("user_id","created_at","dyn_cluster")]%>%
-  group_by(dyn_cluster)%>%
-  dplyr::summarise(begin=min(floor_date(created_at, "month")), 
-                   # when the cluster started its life cycle
-                   end=max(floor_date(created_at, "month"))) 
-                   # when the cluster ended its life cycle
-# Changing the format of the variables
-big_clust$begin<-as.character(big_clust$begin)
-big_clust$end<-as.character(big_clust$end)
-# Keeping only beeded clusters
-big_clust<-big_clust[which(big_clust$begin<=as.Date("2014-01-01",format="%Y-%m-%d")&
-                               big_clust$end>=as.Date("2019-01-01",format="%Y-%m-%d")),]
-
-# Subsetting the dynamic clusters for visualization
-vis4<-vis4[vis4$dyn_cluster %in% big_clust$dyn_cluster,]
-
-# Loading the color package
-library("viridis")   
-# Visualizing 
-ggplot()+geom_smooth(vis4,se=F,mapping=aes(month,sd,
-                                    color=dyn_cluster,
-                                    fill=dyn_cluster),
-                     na.rm=T)+
+p1<- ggplot(vis4, aes(x=vader_score)) +
+  geom_histogram(fill="#4d004b", position="dodge",
+                 binwidth = 0.05,color="#bfd3e6",lwd=1)+
+  facet_wrap(~group)+
   theme(panel.background = element_rect(fill = NA),
-        legend.position = "none")+
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title = element_text(size = 24),
+        strip.text = element_text(size = 24),
+        strip.background = element_blank(),
+        plot.title = element_text(size = 28))+
+  ylab("Density")+xlab("")+
+  ggtitle("Overall distribution of the sentiment values")+
+  ggeasy::easy_center_title()
+
+# With the 0 values
+vis4<-data%>% filter(month %in% 
+                       c("2012-01","2015-12","2017-10","2019-12"))
+vis4$group<-as.factor(as.character(vis4$month))
+levels(vis4$group)<-c("January 2012", "December 2015", 
+                      "October 2017", "December 2019")
+
+p2<- ggplot(vis4, aes(x=vader_score)) +
+  geom_histogram(fill="#4d004b", position="dodge",
+                 binwidth = 0.05,color="#bfd3e6",lwd=1)+
+  facet_wrap(~group)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title = element_text(size = 24),
+        strip.text = element_text(size = 24),
+        strip.background = element_blank(),
+        plot.title = element_text(size = 28))+
+  ylab("")+xlab("")+
+  ggtitle("Overall distribution of the sentiment values")+
+  ggeasy::easy_center_title()
+
+# Across the big communities
+# Finding the biggest communities
+temp<-unique(data[,c("user_id","dyn_cluster")])
+temp<-temp%>%
+  group_by(dyn_cluster)%>%
+  summarise(n_users=n())%>%
+  arrange(-n_users)
+big_com<-temp[c(2:11),1]# choosing 10 biggest excluding NAs
+
+vis4<-data%>% filter(month %in% 
+                       c("2012-01","2015-12","2017-10","2019-12")&
+                       dyn_cluster %in% big_com$dyn_cluster& 
+                       vader_score!=0)
+vis4$group<-as.factor(as.character(vis4$month))
+levels(vis4$group)<-c("January 2012", "December 2015", 
+                      "October 2017", "December 2019")
+                      
+p3<- ggplot(vis4, aes(x=vader_score,
+                      color=dyn_cluster,
+                      fill=dyn_cluster)) +
+  geom_histogram(position="stack",
+                 binwidth = 0.05,lwd=1)+
+  facet_wrap(~group)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title = element_text(size = 24),
+        strip.text = element_text(size = 24),
+        strip.background = element_blank(),
+        plot.title = element_text(size = 28))+
   scale_color_viridis(discrete = T, option = "D")+
   scale_fill_viridis(discrete = T, option = "D")+
-  ylab("SD of the sentiment values")+xlab("")
+  ylab("Density")+xlab("")+
+  ggtitle("Distribution of the sentiment values in the 10 biggest communities")+
+  ggeasy::easy_center_title()
+
+# With the 0 values
+vis4<-data%>% filter(month %in% 
+                       c("2012-01","2015-12","2017-10","2019-12")&
+                       dyn_cluster %in% big_com$dyn_cluster)
+vis4$group<-as.factor(as.character(vis4$month))
+levels(vis4$group)<-c("January 2012", "December 2015", 
+                      "October 2017", "December 2019")
+
+p4<- ggplot(vis4, aes(x=vader_score,
+                      color=dyn_cluster,
+                      fill=dyn_cluster)) +
+  geom_histogram(position="stack",
+                 binwidth = 0.05,lwd=1)+
+  facet_wrap(~group)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=20),
+        axis.title = element_text(size = 24),
+        strip.text = element_text(size = 24),
+        strip.background = element_blank(),
+        plot.title = element_text(size = 28))+
+  scale_color_viridis(discrete = T, option = "D")+
+  scale_fill_viridis(discrete = T, option = "D")+
+  ylab("")+xlab("")+
+  ggtitle("Distribution of the sentiment values in the 10 biggest communities")+
+  ggeasy::easy_center_title()
+
+ggarrange(p1,p2,p3,p4,nrow=2,ncol=2)
 ```
 <div class="figure">
 <img src="Fig6.png" alt="Fig. 7. Sentiment value difference for the biggest dynamic clusters over time." width="100%" />
