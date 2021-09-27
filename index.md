@@ -330,8 +330,105 @@ ggarrange(p1,p2,nrow=2)
 <p class="caption">Fig. 2. Test statistics on the VADER's accuracy of measuring the tonality of the tweets.</p>
 </div>
 
-The test also helped us to find the border values for each group of the texts: in particular, positive, neutral and negative.
+The test also helped us to find the border values for each group of the texts: in particular, positive, neutral and negative. The border values were found using the CDF and grid-search approaches.
 
+```r
+# Calculating the border values
+# CDF for calculating the negative - neutral boundary
+x_pos_neu <- subset(test, coding != 'neg')$vader_score
+x_neg <- subset(test, coding == 'neg')$vader_score
+
+pdf1 <- density(x_pos_neu)
+f1 <- approxfun(pdf1$x, pdf1$y, yleft = 0, yright = 0)
+cdf1 <- function(z){
+  integrate(f1, -Inf, z)$value
+}
+
+pdf2 <- density(x_neg)
+f2 <- approxfun(pdf2$x, pdf2$y, yleft = 0, yright = 0)
+cdf2 <- function(z){
+  integrate(f2, -Inf, z)$value
+}
+
+Target <- function(t){
+  1 - cdf1(t) - cdf2(t)
+}
+
+lower_b<-uniroot(Target, range(c(x_pos_neu, x_neg)))$root
+
+# CDF for calculating the neutral - positive boundary
+x_neg_neu <- subset(test, coding != 'pos')$vader_score
+x_pos <- subset(test, coding == 'pos')$vader_score
+
+pdf1 <- density(x_neg_neu)
+f1 <- approxfun(pdf1$x, pdf1$y, yleft = 0, yright = 0)
+cdf1 <- function(z){
+  integrate(f1, -Inf, z)$value
+}
+
+pdf2 <- density(x_pos)
+f2 <- approxfun(pdf2$x, pdf2$y, yleft = 0, yright = 0)
+cdf2 <- function(z){
+  integrate(f2, -Inf, z)$value
+}
+
+Target <- function(t){
+  1 - cdf1(t) - cdf2(t)
+}
+
+higher_b<-uniroot(Target, range(c(x_neg_neu, x_pos)))$root
+
+# Grid search for the border values giving the highest accuracy,
+# the value of y = T_pos - F_pos + T_neg - F_neg
+# and recall for all of the categories.
+grid_try<-expand.grid(seq(lower_b-0.3,lower_b+0.3,0.0001),
+            seq(higher_b-0.3,higher_b+0.3,0.0001))
+
+library(caret)
+# Calculating the values of accuracy, y and recall
+grid_search_fun<-function(lower_b_value,higher_b_value,test){
+  test<-test %>% mutate(vader_group =
+                      case_when(vader_score < lower_b_value ~ "neg", 
+                                vader_score <= higher_b_value ~ "neu",
+                                vader_score > higher_b_value ~ "pos"))
+  # create the confusion matrix
+  cm = as.matrix(table(Actual = test$coding, 
+                       Predicted = test$vader_group)) 
+  n = sum(cm) # number of instances
+  diag = diag(cm) # number of correctly classified instances per class 
+  rowsums = apply(cm, 1, sum) # number of instances per class
+  accuracy = sum(diag) / n 
+  # y = T_pos - F_pos + T_neg - F_neg
+  if (ncol(cm)==3){
+  y<-cm[3,3]-(sum(cm[,3])-cm[3,3])+cm[1,1]-(sum(cm[,1])-cm[1,1])
+  }else{
+  y<-0}
+  
+  recall = diag / rowsums 
+  recall
+  return(append(c(accuracy,y,recall))
+  
+}
+
+# Applying the function
+res<-apply(grid_try, 1, function(x) grid_search_fun(x[1],x[2],test))%>%
+  t()%>%as.data.frame()
+names(res)<-c("accuracy","y","recall_sum","neg","neu","pos")
+# Adding a column with the sum of all of the parameters
+res<-cbind(res,f=apply(res, 1, sum))
+# Finding the columns that give the maximum values
+res[which(res$f==max(res$f)),]
+# Choosing those border values that are in the subset and the closest 
+# to lower_b and higher_b
+grid_try[which(res$f==max(res$f)),]
+# In this case those are -0.092 and 0.1284
+
+# Adding the column with the VADER category to the main dataset
+data<-data %>% mutate(vader_group =
+                        case_when(vader_score < -0.092 ~ "neg", 
+                                  vader_score <= 0.1284 ~ "neu",
+                                  vader_score > 0.1284 ~ "pos"))
+```
 
 ### Robustness check 
 
