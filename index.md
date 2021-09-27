@@ -788,79 +788,156 @@ ggarrange(p1,p2,p3,p4,nrow=2,ncol=2)
 ### Hartigan’s dip test of unimodality
 
 ```r
-# Installing the needed packages
-#install.packages("diptest")
+install.packages("diptest",dependencies = T)
 library(diptest)
 
-# Loading the needed variables
-dip_test<-data[,c("doc_id","created_at","sent_scaled")]
-# Creating a variable month
-dip_test$month<- floor_date(dip_test$created_at, "month")
-# Ordering the df
-dip_test <-dip_test [order(dip_test$month, decreasing = F),]
+# Dip test for the whole network
 
-# Examining the results of the dip test
-for (i in (1:length(unique(dip_test$month))))
-{
-  print(dip.test(dip_test$sent_scaled [dip_test$month == unique(dip_test$month)[i]]))
- }
+# Including messages with a score of 0
+dip <-vector("list", length(month_n$month))
+for (i in (1:length(dip))){
+  dip [i]<-dip.test(data$vader_score[data$month == month_n$month[i]])$statistic
+}
 
-# Density plots for the key periods
+# Excluding messages with the score of 0
+dipn <-vector("list", length(month_n$month))
+for (i in (1:length(dipn))){
+  dipn [i]<- dip.test(data$vader_score [data$month == month_n$month[i] & 
+                                          data$vader_score !=0])$statistic
+}
 
-jan2012<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[1],], aes(x=sent_scaled)) + 
-  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
-  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
-  ylim(0, 11)+
-  labs(title = "January 2012  (n = 1)", y="Density", x="Scaled sentiment values")+
-  theme(panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
+# Create a df with the values for dip statistic and plot them
+dipdf <- data.frame(dip_stat = unlist(dip), 
+                    dip_statn = unlist (dipn),
+                    month = month_n$month)%>%
+  melt(., id.vars=c("month"))%>%
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
+levels(dipdf$variable)<-c("Including neutral tweets",
+                          "Excluding neutral tweets")
 
-dec2015<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[48],], aes(x=sent_scaled)) + 
-  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
-  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
-  ylim(0, 11)+
-  labs(title = "December 2015 (n = 48)", y="Density", x="Scaled sentiment values")+
-  theme(panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
-
-
-oct2017<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[70],], aes(x=sent_scaled)) + 
-  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
-  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
-  ylim(0, 11)+
-  labs(title = "October 2017  (n = 70)", y="Density", x="Scaled sentiment values")+
-  theme(panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
-
-
-dec2019<-ggplot(dip_test[dip_test$month == unique(dip_test$month)[96],], aes(x=sent_scaled)) + 
-  geom_histogram(aes(y=..density..), colour="#636363", fill="lightgrey", binwidth = 0.03)+
-  geom_density(alpha=.4, color="#cc4c02", fill = "#cc4c02", adjust=2)+
-  ylim(0, 11)+
-  labs(title = "December 2019  (n = 96)", y="Density", x="Scaled sentiment values")+
-  theme(panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_line(colour = "black", linetype = "dotted", size = 0.1),
-        panel.background = element_rect(fill = NA),
-        axis.line.x = element_line(colour = "black", size=0.8, lineend = "butt"),
-        axis.line.y = element_line(colour = "black", size=0.8))
-
-ggarrange(jan2012, dec2015, oct2017, dec2019, ncol = 2, nrow = 2)
-
+ggplot(dipdf, 
+       aes(x=month,y=value,colour = variable))+
+  geom_line(lwd=1.5)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "top",
+        legend.title = element_blank(),
+        axis.text = element_text(size=20),
+        legend.text = element_text(size = 24),
+        axis.title = element_text(size = 24),
+        strip.text = element_text(size = 24),
+        plot.title = element_text(size = 28))+
+  scale_color_manual(values=mycolors)+
+  scale_fill_manual(values=mycolors)+
+  ylab("Dip statistic")+xlab("")+
+  ggtitle("")+
+  ggeasy::easy_center_title()+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
 ```
 <div class="figure">
-<img src="Fig11.png" alt="Fig. 6. Sentiment distributions during the key periods." width="100%" />
-<p class="caption">Fig. 6. Sentiment distributions during the key periods.</p>
+<img src="Fig11.png" alt="Fig. 6. Hartigan's Dip test statistic on the network level." width="100%" />
+<p class="caption">Fig. 6. Hartigan's Dip test statistic on the network level.</p>
 </div>
+```r
+# Dip test for the network communities
+
+dc <- unique(data$dyn_cluster)%>%na.omit()
+
+# Create a function that would perform Dip test for each of the clusters
+
+dip <- function(df, cluster) {
+  dip0 <-vector("list", length(month_n$month))
+  dip0n <-vector("list", length(month_n$month))
+  dip0p<-vector("list", length(month_n$month))
+  dip0pn<-vector("list", length(month_n$month))
+  
+  for (i in (1:length(month_n$month))) {
+    a<- na.omit(df$vader_score [ (df$month == month_n$month[i]) & 
+                                   (df$dc == cluster)])
+    
+    if (length(a)>30) {
+      a0<- dip.test(a)
+      dip0 [i]<-a0$statistic
+      dip0p [i] <- a0$p.value
+    }else {
+      dip0[i]<-NA
+      dip0p [i] <-NA
+    }
+    
+    a<- na.omit(df$vader_score [ (df$month == month_n$month[i]) & 
+                                   (df$dc == cluster)& 
+                                   (df$vader_score != 0)])
+    
+    if (length(a)>30) {  
+      a0n<- dip.test(a)
+      dip0n [i]<-a0n$statistic
+      dip0pn [i] <- a0$p.value
+    }else {
+      dip0n[i]<-0
+      dip0pn [i] <-0
+    }
+  }
+  
+  dipdf <- na.omit(data.frame(dip_stat = unlist(dip0), 
+                              dip_p = unlist (dip0p),
+                              dip_statn = unlist(dip0n),
+                              dip_pn = unlist (dip0pn),
+                              month= month_n$month))
+  
+  return(dipdf)
+}
+
+
+
+clus<-data %>% 
+  select (month, dyn_cluster) %>%
+  dplyr::group_by (month) %>% 
+  summarise(num = length(unique(dyn_cluster)))
+
+
+#run the function
+dc_dfs <-vector("list", length(dc))
+
+for (i in (1:length(dc))){
+  dc_dfs[[i]] <- dip (data, cluster = dc[i])
+}
+
+#calculate the ratio of polarized communities across the months
+
+vals_ratio <- vector ("list", length(month_n$month))
+
+for (i in (1:length(month_n$month))) {
+  vals <- vector ("list", length(dc))
+  vals_bin <- vector ("list", length(dc))
+  
+  for (j in (1:length(dc_dfs)))  {
+    vals [[j]] <- dc_dfs[[j]][["dip_pn"]][dc_dfs[[j]][["month"]] == month_n$month[i]]
+    vals_bin[[j]] <- ifelse (vals[[j]]<=0.05, 1, 0)
+  }
+  
+  vals_ratio [i] <- sum(unlist(vals_bin)) / length(which(vals>=0))
+}
+
+
+#build a df and plot the results
+df_vals <- data.frame (month = month_n$month,
+                       Ratio = unlist(vals_ratio))
+
+#install.packages("plotrix",dependencies = T)
+library(plotrix)
+library(lubridate)
+my_colors = c("#9ebcda","#8c96c6","#8c6bb1","#88419d")
+clplot(x=decimal_date(ymd(paste0(df_vals$month,"-01"))), 
+       y=df_vals$Ratio, lwd=3, 
+       levels=c(0.4,0.6,0.8), col=my_colors,
+       showcuts=T , bty="n",xlab="",
+       ylab=expression("Ratio of polarised communities"))
+```
+<div class="figure">
+<img src="Fig11.png" alt="Fig. 6. Ratio of polarised communities in the network." width="100%" />
+<p class="caption">Fig. 6. Ratio of polarised communities in the network.</p>
+</div>
+
 ### Mean and SD of the sentiment values in the 10 biggest communities
 
 
