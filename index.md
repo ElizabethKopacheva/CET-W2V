@@ -575,47 +575,46 @@ vis1%>%
 # The following block of code shows how to visualize the proportion  
 # difference between  the  number  of  negative  and  positive 
 # tweets over time
+# install.packages("reshape2", dependencies=T)
+library(reshape2)
 
-# Loading the needed package
-#install.packages(c("plotmath","clplot"),dependencies = T)
+# Subsetting the df
+vis2<-data%>%
+  count(month,vader_label)%>%
+  spread(., key = vader_label, value =n )%>%
+  mutate(sum=pos+neg+neu)%>%
+  mutate(pos=pos/sum,neu=neu/sum,neg=neg/sum)%>%
+  select(month,pos,neu,neg)%>%
+  melt(., id.vars=c("month"))%>%
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
+  
+# For the visualisation purposes, releveling the vader_group variable
+levels(vis2$variable)<-c("Positive","Neutral","Negative")
 
-# Loading needed variables
-vis2<-data[,c("doc_id","created_at","negative_tw","positive_tw")]
+# Setting up the colors
+mycolors=c("#e1091d","#b4de2c","#1818ee")
 
-# Creating a new month variable
-vis2$month<- floor_date(vis2$created_at, "month")
+# Visualising
+# install.packages("reshape2", dependencies=T)
+library(ggplot2)
+ggplot(vis2, aes(x=month,y=value,color=variable,fill=variable)) + 
+  geom_bar(stat="identity")+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "top",
+        legend.title = element_blank(),
+        legend.text = element_text(size=24),
+        axis.text = element_text(size=20),
+        axis.title = element_text(size=24))+
+  ylab("Proportion of the tweets of a specific sentiment")+xlab("")+
+  scale_color_manual(values=mycolors)+
+  scale_fill_manual(values=mycolors)+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
 
-# Grouping by month
-# Here we want to get the mean number of negative messages in a month 
-# and the mean number of positive messages
-vis2<-vis2 %>% group_by(month) %>% dplyr::summarise(mean_neg=mean
-                                                    (negative_tw,
-                                                      na.rm = T),
-                                                    mean_pos=mean
-                                                    (positive_tw,
-                                                      na.rm = T))
-
-# Then, visualizing the difference between those two numbers
-vis2$mean<-vis2$mean_neg-vis2$mean_pos
-
-# Defining the colors
-my_colors = c("#FEE6CE","#FDD0A2","#FDAE6B","#FD8D3C","#F16913",
-              "#D94801","#A63603","#7F2704")
-
-# Defining the par of the graph
-library(plotmath)
-op <- par(mar=c(5, 6, 4, 2) + 0.1)
-
-# Building a graph
-clplot(x=decimal_date(vis2$month), y=vis2$mean, lwd=3, 
-     levels=c(0.17,0.20,0.23,0.26,0.29,0.32,0.35), 
-     col=my_colors, 
-     showcuts=T , bty="n",xlab="",ylab=expression(y[1]))
 ```
 
 <div class="figure">
-<img src="Fig4.png" alt="Fig. 4. Proportion  difference  between  the  number  of  negative  and  positivetweets." width="100%" />
-<p class="caption">Fig. 4. Proportion  difference  between  the  number  of  negative  and  positivetweets.</p>
+<img src="Fig4.png" alt="Fig. 4. Proportion of the tweets of a specific sentiment." width="100%" />
+<p class="caption">Fig. 4. Proportion of the tweets of a specific sentiment.</p>
 </div>
 
 ### Overall sentiment value difference over time 
