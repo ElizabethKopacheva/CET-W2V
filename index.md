@@ -446,11 +446,14 @@ data<-data %>% left_join(.,data_vader) %>%
 
 # Creating a quanteda tokens object
 # Taking tokens from the df
-tok<-as.tokens(data$tokens)
-
-# Loading also some metadata
-docvars(tok)<-data[,c("doc_id","dyn_cluster","pos_neg")]
-meta(tok)<-data[,c("doc_id","dyn_cluster","pos_neg")]
+library(quanteda)
+tok<-quanteda::tokens(data$clean_text, 
+                      remove_punct = TRUE,
+                      remove_numbers = TRUE,
+                      remove_symbols = FALSE, 
+                      remove_url = TRUE)
+docvars(tok)<-data[,c("doc_id","vader_group")]
+meta(tok)<-data[,c("doc_id","vader_group")]
 
 # Creating a document-term matrix
 dtm <- quanteda::dfm(tok)
@@ -460,7 +463,7 @@ dtm2<-dfm_subset(dtm, ntoken(dtm) > 0)
 
 
 # TCA is applied using the SpeedReader package
-#install.packages("SpeedReader",dependencies=T)
+# install.packages("SpeedReader",dependencies=T)
 library(SpeedReader)
 dtm_triplet <- SpeedReader::convert_quanteda_to_slam(dtm2)
 
@@ -472,7 +475,7 @@ document_covariates <- docvars(dtm2)
 term_group_table <- contingency_table(
   metadata = document_covariates,
   document_term_matrix = dtm_triplet,
-  variables_to_use = c("pos_neg"),
+  variables_to_use = c("vader_group"),
   threshold = 7
 )
 
