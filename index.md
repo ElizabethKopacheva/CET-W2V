@@ -614,8 +614,15 @@ ggplot(vis2, aes(x=month,y=value,color=variable,fill=variable)) +
 # The following block of code shows how to visualize the 
 # mean and standard deviation of sentiment values over time
 
+# First of all, extracting the mean sentiment values of each user per month
+data_vis<-data%>%select(user_id,vader_score,month)%>%
+  group_by(month, user_id) %>% summarise(vader_score=mean(vader_score,na.rm = T))
+# Adding communities
+coms<-data%>%select(user_id,dyn_cluster)%>%unique()
+data_vis<-left_join(data_vis,coms)
+
 # Reshaping the df for the visualisation purposes
-vis3<-data%>%
+vis3<-data_vis%>%
   group_by(month)%>%
   summarise(sd=sd(vader_score,na.rm=T),
             mean=mean(vader_score,na.rm=T),
@@ -635,7 +642,7 @@ p1<-ggplot(vis3[which(vis3$variable=="sd"),], aes(x=month,y=value)) +
         axis.title=element_text(size=10))+
   ylab("SD of sentiment values")+xlab("")+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
-  scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
+  scale_y_continuous(breaks = seq(0.12, 0.24, by = 0.02))
 
 # Mean plot
 p2<-ggplot(vis3[which(vis3$variable=="mean"),], aes(x=month,y=value)) +
@@ -648,7 +655,7 @@ p2<-ggplot(vis3[which(vis3$variable=="mean"),], aes(x=month,y=value)) +
         axis.title=element_text(size=10))+
   ylab("Mean of sentiment values")+xlab("")+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
-  scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
+  scale_y_continuous(breaks = seq(-0.1, 0.1, by = 0.04))
   
 # Kurtosis plot
 p3<-ggplot(vis3[which(vis3$variable=="kurtosis"),], aes(x=month,y=value)) +
@@ -661,7 +668,7 @@ p3<-ggplot(vis3[which(vis3$variable=="kurtosis"),], aes(x=month,y=value)) +
         axis.title=element_text(size=10))+
   ylab("Kurtosis of sentiment values")+xlab("")+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
-  scale_y_continuous(breaks = seq(-1, 0, by = 0.3))
+  scale_y_continuous(breaks = seq(0, 1.9, by = 0.5))
 # Producing the plots
 ggarrange(p1,p2,p3,nrow=3)
 
@@ -685,47 +692,26 @@ library(viridis)
 library(ggeasy)
 
 # Distribution in the whole network
-vis4<-data%>% filter(month %in% 
-                       c("2012-01","2015-12","2017-10","2019-12")& 
-                       vader_score!=0)
+vis4<-data_vis%>% filter(month %in% 
+                       c("2012-01","2015-12","2017-10","2019-12"))
 vis4$group<-as.factor(as.character(vis4$month))
 levels(vis4$group)<-c("January 2012", "December 2015", 
                       "October 2017", "December 2019")
 
 p1<- ggplot(vis4, aes(x=vader_score)) +
   geom_histogram(fill="#4d004b", position="dodge",
-                 binwidth = 0.05,color="#bfd3e6",lwd=1)+
+                 binwidth = 0.05,color="#bfd3e6",lwd=0.2)+
   facet_wrap(~group)+
   theme(panel.background = element_rect(fill = NA),
         legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title = element_text(size = 24),
-        strip.text = element_text(size = 24),
+        axis.text = element_text(size=11),
+        axis.title = element_text(size = 10),
+        strip.text = element_text(size = 10),
         strip.background = element_blank(),
-        plot.title = element_text(size = 28))+
+        plot.title = element_text(size = 12))+
   ylab("Density")+xlab("")+
-  ggtitle("Overall distribution of the sentiment values")+
-  ggeasy::easy_center_title()
-
-# With the 0 values
-vis4<-data%>% filter(month %in% 
-                       c("2012-01","2015-12","2017-10","2019-12"))
-vis4$group<-as.factor(as.character(vis4$month))
-levels(vis4$group)<-c("January 2012", "December 2015", 
-                      "October 2017", "December 2019")
-
-p2<- ggplot(vis4, aes(x=vader_score)) +
-  geom_histogram(fill="#4d004b", position="dodge",
-                 binwidth = 0.05,color="#bfd3e6",lwd=1)+
-  facet_wrap(~group)+
-  theme(panel.background = element_rect(fill = NA),
-        legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title = element_text(size = 24),
-        strip.text = element_text(size = 24),
-        strip.background = element_blank(),
-        plot.title = element_text(size = 28))+
-  ylab("")+xlab("")+
+  geom_vline(xintercept = 0, linetype="dashed", 
+                                      color = "black", size=0.5)+
   ggtitle("Overall distribution of the sentiment values")+
   ggeasy::easy_center_title()
 
@@ -738,61 +724,35 @@ temp<-temp%>%
   arrange(-n_users)
 big_com<-temp[c(2:11),1]# choosing 10 biggest excluding NAs
 
-vis4<-data%>% filter(month %in% 
-                       c("2012-01","2015-12","2017-10","2019-12")&
-                       dyn_cluster %in% big_com$dyn_cluster& 
-                       vader_score!=0)
-vis4$group<-as.factor(as.character(vis4$month))
-levels(vis4$group)<-c("January 2012", "December 2015", 
-                      "October 2017", "December 2019")
-                      
-p3<- ggplot(vis4, aes(x=vader_score,
-                      color=dyn_cluster,
-                      fill=dyn_cluster)) +
-  geom_histogram(position="stack",
-                 binwidth = 0.05,lwd=1)+
-  facet_wrap(~group)+
-  theme(panel.background = element_rect(fill = NA),
-        legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title = element_text(size = 24),
-        strip.text = element_text(size = 24),
-        strip.background = element_blank(),
-        plot.title = element_text(size = 28))+
-  scale_color_viridis(discrete = T, option = "D")+
-  scale_fill_viridis(discrete = T, option = "D")+
-  ylab("Density")+xlab("")+
-  ggtitle("Distribution of the sentiment values in the 10 biggest communities")+
-  ggeasy::easy_center_title()
-
-# With the 0 values
-vis4<-data%>% filter(month %in% 
+vis4<-data_vis%>% filter(month %in% 
                        c("2012-01","2015-12","2017-10","2019-12")&
                        dyn_cluster %in% big_com$dyn_cluster)
 vis4$group<-as.factor(as.character(vis4$month))
 levels(vis4$group)<-c("January 2012", "December 2015", 
                       "October 2017", "December 2019")
 
-p4<- ggplot(vis4, aes(x=vader_score,
-                      color=dyn_cluster,
+p2<- ggplot(vis4, aes(x=vader_score,
+                      color="#4d004b",
                       fill=dyn_cluster)) +
   geom_histogram(position="stack",
-                 binwidth = 0.05,lwd=1)+
+                 binwidth = 0.05,lwd=0.2)+
+  geom_vline(xintercept = 0, linetype="dashed", 
+                      color = "black", size=0.5)+
   facet_wrap(~group)+
   theme(panel.background = element_rect(fill = NA),
         legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title = element_text(size = 24),
-        strip.text = element_text(size = 24),
+        axis.text = element_text(size=11),
+        axis.title = element_text(size = 10),
+        strip.text = element_text(size = 10),
         strip.background = element_blank(),
-        plot.title = element_text(size = 28))+
+        plot.title = element_text(size = 12))+
   scale_color_viridis(discrete = T, option = "D")+
   scale_fill_viridis(discrete = T, option = "D")+
-  ylab("")+xlab("")+
+  ylab("Density")+xlab("")+
   ggtitle("Distribution of the sentiment values in the 10 biggest communities")+
   ggeasy::easy_center_title()
 
-ggarrange(p1,p2,p3,p4,nrow=2,ncol=2)
+ggarrange(p1,p2,nrow=2)
 ```
 
 <div class="figure">
