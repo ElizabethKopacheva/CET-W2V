@@ -769,43 +769,36 @@ library(diptest)
 
 # Dip test for the whole network
 
-# Including messages with a score of 0
 dip <-vector("list", length(month_n$month))
 for (i in (1:length(dip))){
-  dip [i]<-dip.test(data$vader_score[data$month == month_n$month[i]])$statistic
+  dip [i]<-dip.test(data_vis$vader_score[data$month == month_n$month[i]])$statistic
 }
 
-# Excluding messages with the score of 0
-dipn <-vector("list", length(month_n$month))
-for (i in (1:length(dipn))){
-  dipn [i]<- dip.test(data$vader_score [data$month == month_n$month[i] & 
-                                          data$vader_score !=0])$statistic
-}
 
 # Create a df with the values for dip statistic and plot them
 dipdf <- data.frame(dip_stat = unlist(dip), 
-                    dip_statn = unlist (dipn),
                     month = month_n$month)%>%
   melt(., id.vars=c("month"))%>%
   mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
-levels(dipdf$variable)<-c("Including neutral tweets",
-                          "Excluding neutral tweets")
-
 ggplot(dipdf, 
-       aes(x=month,y=value,colour = variable))+
-  geom_line(lwd=1.5)+
+       aes(x=month,y=value))+
+  geom_line(lwd=1,color="red")+
   theme(panel.background = element_rect(fill = NA),
         legend.position = "top",
         legend.title = element_blank(),
-        axis.text = element_text(size=20),
-        legend.text = element_text(size = 24),
-        axis.title = element_text(size = 24),
-        strip.text = element_text(size = 24),
-        plot.title = element_text(size = 28))+
-  scale_color_manual(values=mycolors)+
-  scale_fill_manual(values=mycolors)+
+        axis.text = element_text(size=10),
+        legend.text = element_text(size = 10),
+        axis.title = element_text(size = 10),
+        strip.text = element_text(size = 10),
+        plot.title = element_text(size = 10))+
   ylab("Dip statistic")+xlab("")+
+  geom_hline(yintercept = 0.025, linetype="dotted", 
+             color = "black", size=0.5)+
+  geom_hline(yintercept = 0.03, linetype="dotted", 
+             color = "black", size=0.5)+
+  geom_hline(yintercept = 0.035, linetype="dotted", 
+             color = "black", size=0.5)+
   ggtitle("")+
   ggeasy::easy_center_title()+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")
@@ -989,25 +982,15 @@ ggarrange(p1,p2,p3,nrow=3)
 # expressing simmilar view
 
 # Get sentiments of nodes in a given month
-# Including neutral tweets
-node_sent<-data%>%
-  select(user_id, month, vader_group) %>%
-  count(user_id,month,vader_group) %>%
-  group_by(user_id,month) %>%
-  mutate(sent = vader_group[n == max(n)][1])%>%
-  select(user_id,month,sent)
-
-# If the user, was not active this month, we can set up the sentiment 
-# of the user as it was at the previous month
 node_sent_all_months<-expand.grid(unique(data$user_id),
                                   unique(data$month))%>%
-                      rename(user_id=Var1,month=Var2)%>%
-                      arrange(desc(month))%>%
-  left_join(.,node_sent[,c("user_id","month","sent")])%>%
+  rename(user_id=Var1,month=Var2)%>%
+  arrange(desc(month))%>%
+  left_join(.,data_vis[,c("user_id","month","vader_score")])%>%
   left_join(.,unique(data[,c("user_id","dyn_cluster")]))%>%
   arrange(user_id)%>%
   group_by(user_id)%>%
-  fill(sent, .direction = "downup")%>%
+  fill(vader_score, .direction = "downup")%>%
   ungroup()
 
 # Adding the sentiments to the edge-list
@@ -1015,99 +998,50 @@ names(node_sent_all_months)<-c("from","month","sent1","dc1")
 edges<-active_edgelists%>%left_join(.,node_sent_all_months)
 names(node_sent_all_months)<-c("to","month","sent2","dc2")
 edges<-left_join(edges,node_sent_all_months)
-
+edges<-edges %>%mutate(vader_group1 =
+                      case_when(sent1 < -0.092 ~ "neg", 
+                                sent1 <= 0.1284 ~ "neu",
+                                sent1 > 0.1284 ~ "pos"),
+                      vader_group2 =
+                      case_when(sent2 < -0.092 ~ "neg", 
+                                sent2 <= 0.1284 ~ "neu",
+                                sent2 > 0.1284 ~ "pos"))
 # Calculating the proportion of the homophilic relationships
-vis_net<-edges%>%select(sent1,sent2,month)%>%na.omit()%>%
+vis_net<-edges%>%select(vader_group1,vader_group2,month)%>%na.omit()%>%
   group_by(month) %>%
   mutate(all = n())%>%
   ungroup()%>%
-  filter(sent1==sent2)%>%
+  filter(vader_group1==vader_group2)%>%
   group_by(month,all)%>%
   mutate(homo=n())%>%mutate(prop=homo/all)%>%
   select(month,prop)%>%unique()%>%
-  mutate(category="Including neutral tweets")
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
-# Taking the same steps but excluding neutral tweets
-node_sent<-data%>%
-  select(user_id, month, vader_group) %>%
-  filter(vader_group!="neu")%>%
-  count(user_id,month,vader_group) %>%
-  group_by(user_id,month) %>%
-  mutate(sent = vader_group[n == max(n)][1])%>%
-  select(user_id,month,sent)
-
-node_sent_all_months<-expand.grid(unique(data$user_id),
-                                  unique(data$month))%>%
-  rename(user_id=Var1,month=Var2)%>%
-  arrange(desc(month))%>%
-  left_join(.,node_sent[,c("user_id","month","sent")])%>%
-  left_join(.,unique(data[,c("user_id","dyn_cluster")]))%>%
-  arrange(user_id)%>%
-  group_by(user_id)%>%
-  fill(sent, .direction = "downup")%>%
-  ungroup()
-
-names(node_sent_all_months)<-c("from","month","sent1","dc1")
-edges<-active_edgelists%>%left_join(.,node_sent_all_months)
-names(node_sent_all_months)<-c("to","month","sent2","dc2")
-edges<-left_join(edges,node_sent_all_months)
-
-vis_net2<-edges%>%select(sent1,sent2,month)%>%na.omit()%>%
-  group_by(month) %>%
-  mutate(all = n())%>%
-  ungroup()%>%
-  filter(sent1==sent2)%>%
-  group_by(month,all)%>%
-  mutate(homo=n())%>%mutate(prop=homo/all)%>%
-  select(month,prop)%>%unique()%>%
-  mutate(category="Excluding neutral tweets")%>%
-  rbind(.,vis_net)%>%
-  mutate(category=as.factor(category),
-                      month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
 # Visualising
-mycolors=c("#b4de2c","#4d004b")
-p1<-ggplot(vis_net2, 
-           aes(x=month,y=prop,group=category,
-               colour = category,fill=category))+
-  geom_line(lwd=1.5)+
-  geom_point(size = 2) +
-  geom_smooth(method = "loess", alpha=0.3)+
+
+p1<-ggplot(vis_net, 
+           aes(x=month,y=prop))+
+  geom_line(color="#4d004b",lwd=1)+ # adding the line connecting the points
+  geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
+  geom_point(size = 1.1,color="#4d004b") +
   theme(panel.background = element_rect(fill = NA),
         legend.position = "top",
         legend.title = element_blank(),
-        axis.text = element_text(size=20),
-        legend.text = element_text(size = 24),
-        axis.title = element_text(size = 24),
-        strip.text = element_text(size = 24),
-        plot.title = element_text(size = 28))+
-  scale_color_manual(values=mycolors)+
-  scale_fill_manual(values=mycolors)+
+        axis.text = element_text(size=10),
+        legend.text = element_text(size = 10),
+        axis.title = element_text(size = 10),
+        strip.text = element_text(size = 10),
+        plot.title = element_text(size = 10))+
+  scale_color_manual(values="#b4de2c")+
+  scale_fill_manual(values="#b4de2c")+
   ylab(expression(y[1]))+xlab("")+
-  ggtitle("Proportion of the homophilic relationships")+
   ggeasy::easy_center_title()+
+  ggtitle("Proportion of the homophilic relationships")+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")
 
 # Proportion of the communities with the majority of the connections
 # being homophilic
-# Similar calculations take place here
-node_sent<-data%>%
-  select(user_id, month, vader_group) %>%
-  count(user_id,month,vader_group) %>%
-  group_by(user_id,month) %>%
-  mutate(sent = vader_group[n == max(n)][1])%>%
-  select(user_id,month,sent)
-
-node_sent_all_months<-expand.grid(unique(data$user_id),
-                                  unique(data$month))%>%
-  rename(user_id=Var1,month=Var2)%>%
-  arrange(desc(month))%>%
-  left_join(.,node_sent[,c("user_id","month","sent")])%>%
-  left_join(.,unique(data[,c("user_id","dyn_cluster")]))%>%
-  arrange(user_id)%>%
-  group_by(user_id)%>%
-  fill(sent, .direction = "downup")%>%
-  ungroup()
 
 # Adding the sentiments to the edge-list
 names(node_sent_all_months)<-c("from","month","sent1","dc1")
@@ -1115,12 +1049,19 @@ edges<-active_edgelists%>%left_join(.,node_sent_all_months)
 names(node_sent_all_months)<-c("to","month","sent2","dc2")
 edges<-left_join(edges,node_sent_all_months)%>%
   filter(dc1==dc2,is.na(dc1)==F)
-
-vis_gr<-edges%>%select(sent1,sent2,month,dc1)%>%na.omit()%>%
+edges<-edges %>%mutate(vader_group1 =
+                         case_when(sent1 < -0.092 ~ "neg", 
+                                   sent1 <= 0.1284 ~ "neu",
+                                   sent1 > 0.1284 ~ "pos"),
+                       vader_group2 =
+                         case_when(sent2 < -0.092 ~ "neg", 
+                                   sent2 <= 0.1284 ~ "neu",
+                                   sent2 > 0.1284 ~ "pos"))
+vis_gr<-edges%>%select(vader_group1,vader_group2,month,dc1)%>%na.omit()%>%
   group_by(month,dc1) %>%
   mutate(all = n())%>%
   ungroup()%>%
-  filter(sent1==sent2)%>%
+  filter(vader_group1==vader_group2)%>%
   group_by(month,dc1,all)%>%
   mutate(homo=n())%>%mutate(prop=homo/all)%>%
   select(month,prop,dc1)%>%unique()
@@ -1133,72 +1074,24 @@ vis_gr<-vis_gr%>%
   group_by(month)%>%
   mutate(homo_com_n=n())%>%
   mutate(prop2=homo_com_n/n_gr)%>%select(month,prop2)%>%unique()%>%
-  mutate(category="Including neutral tweets")
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
-# Excluding neutral tweets  
-node_sent<-data%>%
-  select(user_id, month, vader_group) %>%
-  filter(vader_group!="neu")%>%
-  count(user_id,month,vader_group) %>%
-  group_by(user_id,month) %>%
-  mutate(sent = vader_group[n == max(n)][1])%>%
-  select(user_id,month,sent)
 
-node_sent_all_months<-expand.grid(unique(data$user_id),
-                                  unique(data$month))%>%
-  rename(user_id=Var1,month=Var2)%>%
-  arrange(desc(month))%>%
-  left_join(.,node_sent[,c("user_id","month","sent")])%>%
-  left_join(.,unique(data[,c("user_id","dyn_cluster")]))%>%
-  arrange(user_id)%>%
-  group_by(user_id)%>%
-  fill(sent, .direction = "downup")%>%
-  ungroup()
-
-# Adding the sentiments to the edge-list
-names(node_sent_all_months)<-c("from","month","sent1","dc1")
-edges<-active_edgelists%>%left_join(.,node_sent_all_months)
-names(node_sent_all_months)<-c("to","month","sent2","dc2")
-edges<-left_join(edges,node_sent_all_months)%>%
-  filter(dc1==dc2,is.na(dc1)==F)
-
-vis_gr2<-edges%>%select(sent1,sent2,month,dc1)%>%na.omit()%>%
-  group_by(month,dc1) %>%
-  mutate(all = n())%>%
-  ungroup()%>%
-  filter(sent1==sent2)%>%
-  group_by(month,dc1,all)%>%
-  mutate(homo=n())%>%mutate(prop=homo/all)%>%
-  select(month,prop,dc1)%>%unique()
-
-vis_gr2<-vis_gr2%>%
-  group_by(month)%>%
-  mutate(n_gr=n())%>%
-  ungroup()%>%
-  filter(prop>0.5)%>%
-  group_by(month)%>%
-  mutate(homo_com_n=n())%>%
-  mutate(prop2=homo_com_n/n_gr)%>%select(month,prop2)%>%unique()%>%
-  mutate(category="Excluding neutral tweets")%>%rbind(.,vis_gr)%>%
-  mutate(category=as.factor(category),
-         month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
-
-p2<-ggplot(vis_gr2, 
-           aes(x=month,y=prop2,group=category,
-               colour = category,fill=category))+
-  geom_line(lwd=1.5)+
-  geom_point(size = 2) +
-  geom_smooth(method = "loess", alpha=0.3)+
+p2<-ggplot(vis_gr, 
+           aes(x=month,y=prop2))+
+  geom_line(color="#4d004b",lwd=1)+ # adding the line connecting the points
+  geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
+  geom_point(size = 1.1,color="#4d004b") +
   theme(panel.background = element_rect(fill = NA),
         legend.position = "top",
         legend.title = element_blank(),
-        axis.text = element_text(size=20),
-        legend.text = element_text(size = 24),
-        axis.title = element_text(size = 24),
-        strip.text = element_text(size = 24),
-        plot.title = element_text(size = 28))+
-  scale_color_manual(values=mycolors)+
-  scale_fill_manual(values=mycolors)+
+        axis.text = element_text(size=10),
+        legend.text = element_text(size = 10),
+        axis.title = element_text(size = 10),
+        strip.text = element_text(size = 10),
+        plot.title = element_text(size = 10))+
+  scale_color_manual(values="#b4de2c")+
+  scale_fill_manual(values="#b4de2c")+
   ylab(expression(y[2]))+xlab("")+
   ggtitle("Proportion of the communities with the majority of the relationships being homophilic")+
   ggeasy::easy_center_title()+
