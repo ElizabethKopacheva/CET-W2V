@@ -917,7 +917,7 @@ clplot(x=decimal_date(ymd(paste0(df_vals$month,"-01"))),
 <p class="caption">Fig. 9. Ratio of polarised communities in the network.</p>
 </div>
 
-### Mean and SD of the sentiment values in the 10 biggest communities
+### Mean, SD and kurtosis of the sentiment values in the 10 biggest communities
 
 
 ```r
@@ -926,75 +926,58 @@ clplot(x=decimal_date(ymd(paste0(df_vals$month,"-01"))),
 # the sentiment value per user is calculated.
 
 # Calculating the mean and SD of the sentiment values in big clusters
-vis5<-data%>%filter(dyn_cluster %in% big_com$dyn_cluster)%>%
+vis5<-data_vis%>%filter(dyn_cluster %in% big_com$dyn_cluster)%>%
   group_by(month,dyn_cluster)%>%
   summarise(sd=sd(vader_score,na.rm=T),
-            mean=mean(vader_score,na.rm=T))%>%
+            mean=mean(vader_score,na.rm=T),
+            kurtosis=kurtosis(vader_score,na.rm=T))%>%
   melt(., id.vars=c("month","dyn_cluster"))%>%
   mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
 # Visualising the SD
 p1<-ggplot(vis5[which(vis5$variable=="sd"),], 
            aes(x=month,y=value,color=dyn_cluster)) +
-  geom_smooth(method = "loess",se=FALSE,lwd=2)+
+  geom_smooth(method = "loess",se=FALSE,lwd=1)+
   theme(panel.background = element_rect(fill = NA),
         legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title=element_text(size=24))+
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
   scale_color_viridis(discrete = T, option = "D")+
   scale_fill_viridis(discrete = T, option = "D")+
   ylab("SD of sentiment values")+xlab("")+
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
-  scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
 
 # Visualising the mean
 p2<-ggplot(vis5[which(vis5$variable=="mean"),], 
            aes(x=month,y=value,color=dyn_cluster)) +
-  geom_smooth(method = "loess",se=FALSE,lwd=2)+
+  geom_smooth(method = "loess",se=FALSE,lwd=1)+
   theme(panel.background = element_rect(fill = NA),
         legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title=element_text(size=24))+
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
   scale_color_viridis(discrete = T, option = "D")+
   scale_fill_viridis(discrete = T, option = "D")+
   ylab("Mean of sentiment values")+xlab("")+
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
-  scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
-
-# Calculating sentiment per user
-# Sum of the sentiment scores per community in a month
-temp1<-data%>%filter(dyn_cluster %in% big_com$dyn_cluster)%>%
-  group_by(month,dyn_cluster)%>%
-  summarise(sum=sum(vader_score))%>%
-  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
-
-# Number of users in each community at a given month
-temp2<-data%>%filter(dyn_cluster %in% big_com$dyn_cluster)%>%
-  select(month,dyn_cluster,user_id)%>%unique()%>%
-  group_by(month,dyn_cluster)%>%
-  summarise(count=n())%>%
-  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
-
-# Sentiment per user
-vis5<-left_join(temp1,temp2)%>%mutate(proportion=sum/count)
-
-# Visualising the sentiment per user
-p3<-ggplot(vis5, aes(x=month,y=proportion,color=dyn_cluster)) +
-  geom_smooth(method = "loess",se=FALSE,lwd=2)+
-  theme(panel.background = element_rect(fill = NA),
-        legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title=element_text(size=24))+
-  scale_color_viridis(discrete = T, option = "D")+
-  scale_fill_viridis(discrete = T, option = "D")+
-  ylab("Sentiment value per user")+xlab("")+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")
 
+# Visualising the kurtosis
+p3<-ggplot(vis5[which(vis5$variable=="kurtosis"),], 
+           aes(x=month,y=value,color=dyn_cluster)) +
+  geom_smooth(method = "loess",se=FALSE,lwd=1)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
+  scale_color_viridis(discrete = T, option = "D")+
+  scale_fill_viridis(discrete = T, option = "D")+
+  ylab("Kurtosis of sentiment values")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+  
 ggarrange(p1,p2,p3,nrow=3)
 ```
 <div class="figure">
-<img src="Fig10.png" alt="Fig. 10. Mean and standard deviation of sentiment values in the biggest dynamic communities." width="100%" />
-<p class="caption">Fig. 10. Mean and standard deviation of sentiment values in the biggest dynamic communities.</p>
+<img src="Fig10.png" alt="Fig. 10. Mean, standard deviation and kurtosis of sentiment values in the biggest dynamic communities." width="100%" />
+<p class="caption">Fig. 10. Mean, standard deviation and kurtosis of sentiment values in the biggest dynamic communities.</p>
 </div>
 
 ### The  proportion  of  the  homophilic relationships
