@@ -608,7 +608,7 @@ ggplot(vis2, aes(x=month,y=value,color=variable,fill=variable)) +
 <p class="caption">Fig. 5. Proportion of the tweets of a specific sentiment.</p>
 </div>
 
-### Standard deviation and the mean of the sentiment values over time (in the whole network)
+### Standard deviation, the mean and kurtosis of the sentiment values over time (in the whole network)
 
 ```r
 # The following block of code shows how to visualize the 
