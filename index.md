@@ -618,44 +618,57 @@ ggplot(vis2, aes(x=month,y=value,color=variable,fill=variable)) +
 vis3<-data%>%
   group_by(month)%>%
   summarise(sd=sd(vader_score,na.rm=T),
-            mean=mean(vader_score,na.rm=T))%>%
+            mean=mean(vader_score,na.rm=T),
+            kurtosis=kurtosis(vader_score,na.rm=T))%>%
   melt(., id.vars=c("month"))%>%
   mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
 
 # SD plot
 p1<-ggplot(vis3[which(vis3$variable=="sd"),], aes(x=month,y=value)) +
-  geom_point(size = 2,color="#4d004b") + # adding the points
-  geom_line(color="#4d004b",lwd=1.5)+ # adding the line connecting the points
+  geom_point(size = 1.1,color="#4d004b") + # adding the points
+  geom_line(color="#4d004b",lwd=1)+ # adding the line connecting the points
   geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
   # adding the regression line
   theme(panel.background = element_rect(fill = NA),
         legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title=element_text(size=20))+
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
   ylab("SD of sentiment values")+xlab("")+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
   scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
 
 # Mean plot
 p2<-ggplot(vis3[which(vis3$variable=="mean"),], aes(x=month,y=value)) +
-  geom_point(size = 2,color="#4d004b") +
-  geom_line(color="#4d004b",lwd=1.5)+
+  geom_point(size = 1.1,color="#4d004b") +
+  geom_line(color="#4d004b",lwd=1)+
   geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
   theme(panel.background = element_rect(fill = NA),
         legend.position = "none",
-        axis.text = element_text(size=20),
-        axis.title=element_text(size=20))+
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
   ylab("Mean of sentiment values")+xlab("")+
   scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
   scale_y_continuous(breaks = seq(-0.2, 4, by = 0.05))
-
+  
+# Kurtosis plot
+p3<-ggplot(vis3[which(vis3$variable=="kurtosis"),], aes(x=month,y=value)) +
+  geom_point(size = 1.1,color="#4d004b") +
+  geom_line(color="#4d004b",lwd=1)+
+  geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
+  ylab("Kurtosis of sentiment values")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  scale_y_continuous(breaks = seq(-1, 0, by = 0.3))
 # Producing the plots
-ggarrange(p1,p2,nrow=2)
+ggarrange(p1,p2,p3,nrow=3)
 
 ```
 <div class="figure">
-<img src="Fig6.png" alt="Fig. 6. Mean and standard deviation of the overall sentiment values." width="100%" />
-<p class="caption">Fig. 6. Mean and standard deviation of the overall sentiment values.</p>
+<img src="Fig6.png" alt="Fig. 6. Mean, standard deviation and kurtosis of the overall sentiment values." width="100%" />
+<p class="caption">Fig. 6. Mean, standard deviation and kurtosis of the overall sentiment values.</p>
 </div>
 
 
