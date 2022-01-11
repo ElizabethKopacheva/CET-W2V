@@ -608,6 +608,130 @@ ggplot(vis2, aes(x=month,y=value,color=variable,fill=variable)) +
 <p class="caption">Fig. 5. Proportion of the tweets of a specific sentiment.</p>
 </div>
 
+### Average tweet length over time
+
+```r
+data$text_length<-lapply(data$text,nchar)
+class(data$text_length[1])
+vis_length<-data%>%
+  mutate(text_length=as.numeric(as.character(text_length)))%>%
+  group_by(month)%>%
+  summarise(median=median(text_length,na.rm=T))%>%
+  melt(., id.vars=c("month"))%>%
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
+
+# Tweet length plot
+ggplot(vis_length, aes(x=month,y=value)) +
+  geom_point(size = 1.1,color="#4d004b") + # adding the points
+  geom_line(color="#4d004b",lwd=1)+ # adding the line connecting the points
+  geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
+  # adding the regression line
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
+  ylab("Median of text lengths")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+
+```
+<div class="figure">
+<img src="Fig6.png" alt="Fig. 6. Median of the tweet length over time." width="100%" />
+<p class="caption">Fig. 6. Median of the tweet length over time.</p>
+</div>
+
+###  The growth of the user number over time
+
+```r
+# Subsetting the dataset
+user_month<-data%>%select(user_id,month)%>%unique()%>%
+            group_by(month)%>%summarise(count=n())%>% # grouping by month and counting the number of users
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
+
+# Plotting
+ggplot(user_month,aes(x=month,y=count)) +
+
+  geom_line(color="red",lwd=1)+ # adding the line connecting the points
+  geom_hline(yintercept = 500, linetype="dotted", 
+             color = "black", size=0.5)+
+  geom_hline(yintercept = 1000, linetype="dotted", 
+             color = "black", size=0.5)+
+  geom_hline(yintercept = 1500, linetype="dotted", 
+             color = "black", size=0.5)+
+  # adding the regression line
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
+  ylab("Number of users")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  ggeasy::easy_center_title()
+
+```
+
+<div class="figure">
+<img src="Fig7.png" alt="Fig. 7. The growth of the user number over time." width="100%" />
+<p class="caption">Fig. 7. The growth of the user number over time.</p>
+</div>
+
+###  Distribution of the sentiment values during the key periods in the tweets > = 200 characters and < 200 characters
+
+```r
+# Choosing only those posts that are longer than 199 characters
+data_vis1<-data%>%filter(text_length>=200)%>%select(user_id,vader_score,month)%>%
+  group_by(month, user_id)%>%summarise(vader_score=mean(vader_score,na.rm = T))
+vis_key<-data_vis1%>% filter(month %in% 
+                           c("2017-10","2018-09","2019-12"))
+vis_key$group<-as.factor(as.character(vis_key$month))
+levels(vis_key$group)<-c("October 2017","September 2018", "December 2019")
+# Plotting
+p1<- ggplot(vis_key, aes(x=vader_score)) +
+  geom_histogram(fill="#4d004b", position="dodge",
+                 binwidth = 0.05,color="#bfd3e6",lwd=0.2)+
+  facet_wrap(~group)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=11),
+        axis.title = element_text(size = 10),
+        strip.text = element_text(size = 10),
+        strip.background = element_blank(),
+        plot.title = element_text(size = 12))+
+  ylab("Density")+xlab("Sentiment value")+
+  geom_vline(xintercept = 0, linetype="dashed", 
+             color = "black", size=0.5)+
+  ggtitle("Distribution of the sentiment values in texts with >= 200 characters")+
+  ggeasy::easy_center_title()
+  
+# Choosing only those posts that are shorter than 200 characters
+data_vis1<-data%>%filter(text_length<200)%>%select(user_id,vader_score,month)%>%
+  group_by(month, user_id)%>%summarise(vader_score=mean(vader_score,na.rm = T))
+vis_key<-data_vis1%>% filter(month %in% 
+                               c("2017-10","2018-09","2019-12"))
+vis_key$group<-as.factor(as.character(vis_key$month))
+levels(vis_key$group)<-c("October 2017","September 2018", "December 2019")
+# Plotting
+p2<- ggplot(vis_key, aes(x=vader_score)) +
+  geom_histogram(fill="#4d004b", position="dodge",
+                 binwidth = 0.05,color="#bfd3e6",lwd=0.2)+
+  facet_wrap(~group)+
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=11),
+        axis.title = element_text(size = 10),
+        strip.text = element_text(size = 10),
+        strip.background = element_blank(),
+        plot.title = element_text(size = 12))+
+  ylab("Density")+xlab("")+
+  geom_vline(xintercept = 0, linetype="dashed", 
+             color = "black", size=0.5)+
+  ggtitle("Distribution of the sentiment values in texts with < 200 characters")+
+  ggeasy::easy_center_title()
+ggarrange(p2,p1,nrow=2)
+```
+<div class="figure">
+<img src="Fig8.png" alt="Fig. 8. Distribution of sentiment values in the tweets of less and more than 200 characters." width="100%" />
+<p class="caption">Fig. 8. Distribution of sentiment values in the tweets of less and more than 200 characters.</p>
+</div>
+
 ### Standard deviation, the mean and kurtosis of the sentiment values over time (in the whole network)
 
 ```r
@@ -674,8 +798,8 @@ ggarrange(p1,p2,p3,nrow=3)
 
 ```
 <div class="figure">
-<img src="Fig6.png" alt="Fig. 6. Mean, standard deviation and kurtosis of the overall sentiment values." width="100%" />
-<p class="caption">Fig. 6. Mean, standard deviation and kurtosis of the overall sentiment values.</p>
+<img src="Fig9.png" alt="Fig. 9. Mean, standard deviation and kurtosis of the overall sentiment values." width="100%" />
+<p class="caption">Fig. 9. Mean, standard deviation and kurtosis of the overall sentiment values.</p>
 </div>
 
 
@@ -756,8 +880,8 @@ ggarrange(p1,p2,nrow=2)
 ```
 
 <div class="figure">
-<img src="Fig7.png" alt="Fig. 7. Sentiment distributions during the key periods." width="100%" />
-<p class="caption">Fig. 7. Sentiment distributions during the key periods.</p>
+<img src="Fig10.png" alt="Fig. 10. Sentiment distributions during the key periods." width="100%" />
+<p class="caption">Fig. 10. Sentiment distributions during the key periods.</p>
 </div>
 
 
@@ -775,39 +899,13 @@ for (i in (1:length(dip))){
 }
 
 
-# Create a df with the values for dip statistic and plot them
+# Create a df with the values of dip statistic
 dipdf <- data.frame(dip_stat = unlist(dip), 
                     month = month_n$month)%>%
   melt(., id.vars=c("month"))%>%
   mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))
-
-ggplot(dipdf, 
-       aes(x=month,y=value))+
-  geom_line(lwd=1,color="red")+
-  theme(panel.background = element_rect(fill = NA),
-        legend.position = "top",
-        legend.title = element_blank(),
-        axis.text = element_text(size=10),
-        legend.text = element_text(size = 10),
-        axis.title = element_text(size = 10),
-        strip.text = element_text(size = 10),
-        plot.title = element_text(size = 10))+
-  ylab("Dip statistic")+xlab("")+
-  geom_hline(yintercept = 0.025, linetype="dotted", 
-             color = "black", size=0.5)+
-  geom_hline(yintercept = 0.03, linetype="dotted", 
-             color = "black", size=0.5)+
-  geom_hline(yintercept = 0.035, linetype="dotted", 
-             color = "black", size=0.5)+
-  ggtitle("")+
-  ggeasy::easy_center_title()+
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y")
 ```
 
-<div class="figure">
-<img src="Fig8.png" alt="Fig. 8. Hartigan's Dip test statistic on the network level." width="100%" />
-<p class="caption">Fig. 8. Hartigan's Dip test statistic on the network level.</p>
-</div>
 
 ```r
 # Dip test for the network communities
@@ -868,47 +966,11 @@ clus<-data %>%
 
 #run the function
 dc_dfs <-vector("list", length(dc))
-
 for (i in (1:length(dc))){
-  dc_dfs[[i]] <- dip (data, cluster = dc[i])
+  dc_dfs[[i]] <- dip (data_vis, cluster = dc[i])
 }
 
-#calculate the ratio of polarized communities across the months
-
-vals_ratio <- vector ("list", length(month_n$month))
-
-for (i in (1:length(month_n$month))) {
-  vals <- vector ("list", length(dc))
-  vals_bin <- vector ("list", length(dc))
-  
-  for (j in (1:length(dc_dfs)))  {
-    vals [[j]] <- dc_dfs[[j]][["dip_pn"]][dc_dfs[[j]][["month"]] == month_n$month[i]]
-    vals_bin[[j]] <- ifelse (vals[[j]]<=0.05, 1, 0)
-  }
-  
-  vals_ratio [i] <- sum(unlist(vals_bin)) / length(which(vals>=0))
-}
-
-
-#build a df and plot the results
-df_vals <- data.frame (month = month_n$month,
-                       Ratio = unlist(vals_ratio))
-
-#install.packages("plotrix",dependencies = T)
-library(plotrix)
-library(lubridate)
-my_colors = c("#9ebcda","#8c96c6","#8c6bb1","#88419d")
-clplot(x=decimal_date(ymd(paste0(df_vals$month,"-01"))), 
-       y=df_vals$Ratio, lwd=3, 
-       levels=c(0.4,0.6,0.8), col=my_colors,
-       showcuts=T , bty="n",xlab="",
-       ylab=expression("Ratio of polarised communities"))
 ```
-
-<div class="figure">
-<img src="Fig9.png" alt="Fig. 9. Ratio of polarised communities in the network." width="100%" />
-<p class="caption">Fig. 9. Ratio of polarised communities in the network.</p>
-</div>
 
 ### Mean, SD and kurtosis of the sentiment values in the 10 biggest communities
 
@@ -969,17 +1031,51 @@ p3<-ggplot(vis5[which(vis5$variable=="kurtosis"),],
 ggarrange(p1,p2,p3,nrow=3)
 ```
 <div class="figure">
-<img src="Fig10.png" alt="Fig. 10. Mean, standard deviation and kurtosis of sentiment values in the biggest dynamic communities." width="100%" />
-<p class="caption">Fig. 10. Mean, standard deviation and kurtosis of sentiment values in the biggest dynamic communities.</p>
+<img src="Fig11.png" alt="Fig. 11. Mean, standard deviation and kurtosis of sentiment values in the biggest dynamic communities." width="100%" />
+<p class="caption">Fig. 11. Mean, standard deviation and kurtosis of sentiment values in the biggest dynamic communities.</p>
+</div>
+
+### Standard deviation of mean sentiment values in the dynamic communities
+```r
+# Calculating the SD of sentiments in the communities
+temp<-unique(data[,c("user_id","dyn_cluster")])%>%
+  group_by(dyn_cluster)%>%
+  summarise(n_users=n())%>%
+  arrange(n_users)%>%na.omit()
+vis6<-data_vis%>%filter(dyn_cluster %in% temp$dyn_cluster)%>%
+  group_by(month,dyn_cluster)%>%
+  summarise(mean=mean(vader_score,na.rm=T))%>%
+  melt(., id.vars=c("month","dyn_cluster"))%>%
+  mutate(month=as.Date(paste0(month,"-01"),"%Y-%m-%d"))%>%
+  group_by(month)%>%
+  summarise(sd=sd(value))
+  
+# Visualising the SD
+ggplot(vis6,aes(x=month,y=sd)) +
+  geom_point(size = 1.1,color="#4d004b") + # adding the points
+  geom_line(color="#4d004b",lwd=1)+ # adding the line connecting the points
+  geom_smooth(method = "loess", color = "#b4de2c", fill = "#b4de2c",alpha=0.3)+
+  # adding the regression line
+  theme(panel.background = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size=10),
+        axis.title=element_text(size=10))+
+  ylab("SD of the mean sentiment values")+xlab("")+
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
+  ggtitle("SD of the mean sentiment values of all dynamic communities")+
+  ggeasy::easy_center_title()
+```
+
+<div class="figure">
+<img src="Fig12.png" alt="Fig. 12. Standard deviation of mean sentiment values in the dynamic communities." width="100%" />
+<p class="caption">Fig. 12. Standard deviation of mean sentiment values in the dynamic communities.</p>
 </div>
 
 ### The  proportion  of  the  homophilic relationships
-
-
 ```r
 # The following block of code shows how to calculate and visualize 
 # the  proportion  of  the  connections  between  the  users  
-# expressing simmilar view
+# expressing similar views
 
 # Get sentiments of nodes in a given month
 node_sent_all_months<-expand.grid(unique(data$user_id),
@@ -1101,7 +1197,7 @@ ggarrange(p1,p2,nrow=2)
 ```
 
 <div class="figure">
-<img src="Fig11.png" alt="Fig. 11. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic." width="100%" />
-<p class="caption">Fig. 11. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic.</p>
+<img src="Fig13.png" alt="Fig. 13. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic." width="100%" />
+<p class="caption">Fig. 13. Share of homogeneous edges in the network and share of network's communities with the majority of the relationships being homophilic.</p>
 </div>
 
